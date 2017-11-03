@@ -9,6 +9,7 @@ import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import repast.simphony.space.continuous.ContinuousSpace;
 import repast.simphony.space.grid.Grid;
+import repast.simphony.space.grid.GridPoint;
 import sajas.core.Agent;
 import sajas.core.behaviours.CyclicBehaviour;
 import sajas.domain.DFService;
@@ -19,6 +20,7 @@ public class Captain extends Agent {
 
 	private double xCaptain;
 	private double yCaptain;
+	private GridPoint goal;
 	private int communicationRadius;
 	private int visionRadius;
 
@@ -53,6 +55,7 @@ public class Captain extends Agent {
 
 		addBehaviour(new ExchangeInformation());
 		addBehaviour(new CaptainBehaviour());
+		addBehaviour(new MoveBehaviour());
 		System.err.println("Captain " + getAID().getName() + " is ready.");
 	}
 
@@ -90,6 +93,18 @@ public class Captain extends Agent {
 		}
 	}
 
+	private class MoveBehaviour extends CyclicBehaviour {
+		private static final long serialVersionUID = 1L;
+
+		@Override
+		public void action() {
+			try {
+				moveTowards(goal);
+			} catch (NullPointerException e) {
+			}
+		}
+	}
+
 	private class CaptainBehaviour extends CyclicBehaviour {
 		private static final long serialVersionUID = 1L;
 
@@ -102,15 +117,19 @@ public class Captain extends Agent {
 				String[] parts = msg.split("_");
 				double xSoldier = Double.parseDouble(parts[0]);
 				double ySoldier = Double.parseDouble(parts[1]);
-				
-				double distance = Math
-						.sqrt(Math.pow(xCaptain - xSoldier, 2) + Math.pow(yCaptain - ySoldier, 2));
+
+				double distance = Math.sqrt(Math.pow(xCaptain - xSoldier, 2) + Math.pow(yCaptain - ySoldier, 2));
 
 				ACLMessage reply = message.createReply();
 				if (distance <= communicationRadius) {
 					// TODO: Receive the soldier information
+					int[] point = new int[2];
+					point[0] = Integer.parseInt(parts[2]);
+					point[1] = Integer.parseInt(parts[3]);
+					goal = new GridPoint(point);
 					reply.setPerformative(ACLMessage.INFORM);
-					System.out.println(getAID().getName() + " received information of " + message.getSender().getName());
+					System.out
+							.println(getAID().getName() + " received information of " + message.getSender().getName());
 				} else {
 					reply.setPerformative(ACLMessage.FAILURE);
 					reply.setContent("not-available");
@@ -119,6 +138,25 @@ public class Captain extends Agent {
 			} else {
 				block();
 			}
+		}
+	}
+
+	public void moveTowards(GridPoint pt) {
+		if (!pt.equals(grid.getLocation(this))) {
+			if (xCaptain > pt.getX()) {
+				xCaptain--;
+			} else {
+				xCaptain++;
+			}
+
+			if (yCaptain > pt.getY()) {
+				yCaptain--;
+			} else {
+				yCaptain++;
+			}
+
+			space.moveTo(this, xCaptain, yCaptain);
+			grid.moveTo(this, (int) xCaptain, (int) yCaptain);
 		}
 	}
 }

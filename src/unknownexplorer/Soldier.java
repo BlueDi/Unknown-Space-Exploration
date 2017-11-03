@@ -1,5 +1,6 @@
 package unknownexplorer;
 
+import java.util.List;
 import java.util.Random;
 
 import jade.core.AID;
@@ -8,10 +9,14 @@ import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
+import repast.simphony.query.space.grid.GridCell;
+import repast.simphony.query.space.grid.GridCellNgh;
 import repast.simphony.space.continuous.ContinuousSpace;
 import repast.simphony.space.grid.Grid;
+import repast.simphony.space.grid.GridPoint;
 import sajas.core.Agent;
 import sajas.core.behaviours.Behaviour;
+import sajas.core.behaviours.CyclicBehaviour;
 import sajas.core.behaviours.TickerBehaviour;
 import sajas.domain.DFService;
 
@@ -26,6 +31,7 @@ public class Soldier extends Agent {
 	private double velocitySoldier;
 
 	private boolean hasInfo;
+	private String info;
 
 	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid) {
 		this.space = space;
@@ -45,6 +51,7 @@ public class Soldier extends Agent {
 		grid.moveTo(this, (int) xSoldier, (int) ySoldier);
 
 		addBehaviour(new SearchCaptains(this, 1));
+		addBehaviour(new SearchGoal());
 
 		System.out.println("Soldier " + getAID().getName() + " is ready.");
 	}
@@ -169,7 +176,8 @@ public class Soldier extends Agent {
 				ACLMessage order = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
 				order.addReceiver(closestCaptain);
 				// TODO: setContent with the information
-				order.setContent(xSoldier + "_" + ySoldier);
+				order.setContent(xSoldier + "_" + ySoldier + "_" + info);
+				System.err.println(info);
 				order.setConversationId("comns");
 				order.setReplyWith("info" + System.currentTimeMillis());
 				myAgent.send(order);
@@ -201,5 +209,27 @@ public class Soldier extends Agent {
 			// TODO: Check if reached the objective
 			return false;
 		}
+	}
+
+	private class SearchGoal extends CyclicBehaviour {
+		private static final long serialVersionUID = 1L;
+
+		@Override
+		public void action() {
+			GridPoint pt = grid.getLocation(myAgent);
+
+			GridCellNgh<Objective> nghCreator = new GridCellNgh<Objective>(grid, pt, Objective.class, 1, 1);
+			List<GridCell<Objective>> gridCells = nghCreator.getNeighborhood(true);
+
+			GridPoint goal = null;
+			for (GridCell<Objective> cell : gridCells) {
+				if (cell.size() > 0) {
+					goal = cell.getPoint();
+					hasInfo = true;
+					info = goal.getX() + "_" + goal.getY();
+				}
+			}
+		}
+
 	}
 }
