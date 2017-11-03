@@ -115,7 +115,7 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 		grid = gridFactory.createGrid("grid", context, new GridBuilderParameters<Object>(new WrapAroundBorders(),
 				new SimpleGridAdder<Object>(), true, 50, 50));
 
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < 100; i++) {
 			Wall w = new Wall();
 			context.add(w);
 			NdPoint pt = space.getLocation(w);

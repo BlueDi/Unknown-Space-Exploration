@@ -2,11 +2,7 @@ package unknownexplorer;
 
 import java.util.Random;
 
-import repast.simphony.space.continuous.ContinuousSpace;
-import repast.simphony.space.grid.Grid;
-
 public class Wall {
-
 	private double xWall;
 	private double yWall;
 
@@ -15,5 +11,9 @@ public class Wall {
 		double[] randomNumbers = r.doubles(2, 0, 101).toArray();
 		xWall = randomNumbers[0];
 		yWall = randomNumbers[1];
+	}
+
+	public String toString() {
+		return "Wall, [" + xWall + ", " + yWall + "]";
 	}
 }
