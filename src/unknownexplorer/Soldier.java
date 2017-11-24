@@ -32,19 +32,23 @@ public class Soldier extends Agent {
 
 	private boolean hasInfo;
 	private String info;
+	
+	private int x;
+	private int y;
 
-	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid) {
+	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid, int x, int y) {
 		this.space = space;
 		this.grid = grid;
-
 		hasInfo = false;
+		this.x =x;
+		this.y =y;
 	}
 
 	protected void setup() {
 		Random r = new Random();
 		double[] randomNumbers = r.doubles(2, 0, 101).toArray();
-		xSoldier = randomNumbers[0];
-		ySoldier = randomNumbers[1];
+		xSoldier = this.x;//randomNumbers[0];
+		ySoldier = this.y;//randomNumbers[1];
 		velocitySoldier = 2;
 
 		space.moveTo(this, xSoldier, ySoldier);
@@ -100,6 +104,7 @@ public class Soldier extends Agent {
 		private int step = 0;
 
 		public void action() {
+			
 			switch (step) {
 			case 0:
 				// Send the cfp to all Captains
@@ -157,11 +162,16 @@ public class Soldier extends Agent {
 						grid.moveTo(myAgent, (int) xSoldier, (int) ySoldier);
 
 						step = 0;
-					} else if (captainsCounter >= allCaptains.length && !hasInfo) {
+					} 
+					// TO DO
+					else if (captainsCounter >= allCaptains.length && !hasInfo) {
 						Random r = new Random();
 						double[] randomNumbers = r.doubles(2, -velocitySoldier, velocitySoldier).toArray();
-						xSoldier += randomNumbers[0];
-						ySoldier += randomNumbers[1];
+						
+						xSoldier += 2;
+						ySoldier += 0;
+						//xSoldier += randomNumbers[0];
+						//ySoldier += randomNumbers[1];
 						step = 0;
 					}
 
@@ -211,6 +221,7 @@ public class Soldier extends Agent {
 		}
 	}
 
+	// GOAL SEARCH
 	private class SearchGoal extends CyclicBehaviour {
 		private static final long serialVersionUID = 1L;
 
