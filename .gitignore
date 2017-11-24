@@ -1,0 +1,17 @@
+.classpath
+.project
+.settings
+bin
+batch
+*.log
+docs
+freezedried_data
+icons
+installer
+integration
+launchers
+lib/Readme.txt
+MessageCenter.*
+misc
+repast-licenses
+Repast.*
