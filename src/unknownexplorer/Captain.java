@@ -2,6 +2,7 @@ package unknownexplorer;
 
 import java.util.Random;
 
+import jade.core.AID;
 import jade.domain.FIPAException;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
@@ -11,6 +12,7 @@ import repast.simphony.space.continuous.ContinuousSpace;
 import repast.simphony.space.grid.Grid;
 import repast.simphony.space.grid.GridPoint;
 import sajas.core.Agent;
+import sajas.core.behaviours.Behaviour;
 import sajas.core.behaviours.CyclicBehaviour;
 import sajas.domain.DFService;
 
@@ -54,6 +56,7 @@ public class Captain extends Agent {
 		}
 
 		addBehaviour(new ExchangeInformation());
+		addBehaviour(new ListenBroadcastGoal());
 		addBehaviour(new CaptainBehaviour());
 		addBehaviour(new MoveBehaviour());
 		System.err.println("Captain " + getAID().getName() + " is ready.");
@@ -90,6 +93,66 @@ public class Captain extends Agent {
 				reply.setContent(xCaptain + "_" + yCaptain);
 				myAgent.send(reply);
 			}
+		}
+	}
+
+	private class BroadcastGoal extends Behaviour {
+		private static final long serialVersionUID = 1L;
+		private AID[] allCaptains;
+
+		@Override
+		public void action() {
+			// Update the list of Captains
+			DFAgentDescription template = new DFAgentDescription();
+			ServiceDescription sd = new ServiceDescription();
+			sd.setType("Comunication");
+			template.addServices(sd);
+			try {
+				DFAgentDescription[] result = DFService.search(myAgent, template);
+				System.out.println(getAID().getName() + " found " + result.length + " captains.");
+				allCaptains = new AID[result.length];
+				for (int i = 0; i < result.length; ++i) {
+					allCaptains[i] = result[i].getName();
+				}
+			} catch (FIPAException fe) {
+				fe.printStackTrace();
+			}
+
+			// Send the goal to all Captains
+			ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
+			for (int i = 0; i < allCaptains.length; ++i) {
+				cfp.addReceiver(allCaptains[i]);
+			}
+			cfp.setContent(goal.getX() + "_" + goal.getY());
+			cfp.setConversationId("broadcast_goal");
+			cfp.setReplyWith("cfp" + System.currentTimeMillis());
+			myAgent.send(cfp);
+			System.out.println(cfp.toString());
+		}
+
+		@Override
+		public boolean done() {
+			// TODO Auto-generated method stub
+			return false;
+		}
+	}
+
+	private class ListenBroadcastGoal extends CyclicBehaviour {
+		private static final long serialVersionUID = 1L;
+
+		@Override
+		public void action() {
+			MessageTemplate mt = MessageTemplate.MatchConversationId("broadcast_goal");
+			ACLMessage reply = myAgent.receive(mt);
+
+			try {
+				String msg = reply.getContent();
+				String[] parts = msg.split("_");
+				int[] point = new int[2];
+				point[0] = Integer.parseInt(parts[0]);
+				point[1] = Integer.parseInt(parts[1]);
+				goal = new GridPoint(point);
+			} catch (NullPointerException e) {}
 		}
 	}
 
@@ -130,6 +193,7 @@ public class Captain extends Agent {
 					reply.setPerformative(ACLMessage.INFORM);
 					System.out
 							.println(getAID().getName() + " received information of " + message.getSender().getName());
+					myAgent.addBehaviour(new BroadcastGoal());
 				} else {
 					reply.setPerformative(ACLMessage.FAILURE);
 					reply.setContent("not-available");
