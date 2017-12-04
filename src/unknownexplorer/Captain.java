@@ -1,6 +1,7 @@
 package unknownexplorer;
 
 import java.util.Random;
+import java.util.stream.IntStream;
 
 import jade.core.AID;
 import jade.domain.FIPAException;
@@ -23,14 +24,35 @@ public class Captain extends Agent {
 	private double xCaptain;
 	private double yCaptain;
 	private GridPoint goal;
-	private int communicationRadius;
+	private int communicationRadius; // TODO: communicationRadius must come from
+										// the parameters.
 	private int visionRadius;
 
-	public Captain(ContinuousSpace<Object> space, Grid<Object> grid) {
+	/**
+	 * searchMatrix values will be 0, 1, 2, 3, or 4.
+	 * <P>0: default, unknown of whats in there;
+	 * <P>1: a soldier is searching it;
+	 * <P>2: position searched & empty; 
+	 * <P>3: position searched & wall; 
+	 * <P>4: goal.
+	 */
+	int[][] searchMatrix;
+
+	/**
+	 * Captain constructor
+	 * @param space
+	 * @param grid
+	 * @param BOARD_DIM
+	 */
+	public Captain(ContinuousSpace<Object> space, Grid<Object> grid, int BOARD_DIM) {
 		this.space = space;
 		this.grid = grid;
+		searchMatrix = new int[BOARD_DIM][BOARD_DIM];
 	}
 
+	/**
+	 * Initialize Captain.
+	 */
 	protected void setup() {
 		Random r = new Random();
 		double[] randomNumbers = r.doubles(2, 0, 101).toArray();
@@ -76,21 +98,13 @@ public class Captain extends Agent {
 		public void action() {
 			ACLMessage message = myAgent.receive();
 			if (message != null) {
-				String msg = message.getContent();
-
-				String[] parts = msg.split("_");
-				double xSoldier = Double.parseDouble(parts[0]);
-				double ySoldier = Double.parseDouble(parts[1]);
-
-				double distance = Math.sqrt(Math.pow(xCaptain - xSoldier, 2) + Math.pow(yCaptain - ySoldier, 2));
-
 				ACLMessage reply = message.createReply();
-				if (distance <= communicationRadius) {
+				if (checkFreePositions()) {
 					reply.setPerformative(ACLMessage.PROPOSE);
+					reply.setContent(getSearchInfo());
 				} else {
 					reply.setPerformative(ACLMessage.REFUSE);
 				}
-				reply.setContent(xCaptain + "_" + yCaptain);
 				myAgent.send(reply);
 			}
 		}
@@ -152,7 +166,8 @@ public class Captain extends Agent {
 				point[0] = Integer.parseInt(parts[0]);
 				point[1] = Integer.parseInt(parts[1]);
 				goal = new GridPoint(point);
-			} catch (NullPointerException e) {}
+			} catch (NullPointerException e) {
+			}
 		}
 	}
 
@@ -172,36 +187,93 @@ public class Captain extends Agent {
 		private static final long serialVersionUID = 1L;
 
 		public void action() {
-			MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
+			MessageTemplate mt = MessageTemplate.MatchConversationId("goal");
 			ACLMessage message = myAgent.receive(mt);
 			if (message != null) {
 				String msg = message.getContent();
 
 				String[] parts = msg.split("_");
-				double xSoldier = Double.parseDouble(parts[0]);
-				double ySoldier = Double.parseDouble(parts[1]);
-
-				double distance = Math.sqrt(Math.pow(xCaptain - xSoldier, 2) + Math.pow(yCaptain - ySoldier, 2));
-
-				ACLMessage reply = message.createReply();
-				if (distance <= communicationRadius) {
-					// TODO: Receive the soldier information
-					int[] point = new int[2];
-					point[0] = Integer.parseInt(parts[2]);
-					point[1] = Integer.parseInt(parts[3]);
-					goal = new GridPoint(point);
-					reply.setPerformative(ACLMessage.INFORM);
-					System.out
-							.println(getAID().getName() + " received information of " + message.getSender().getName());
-					myAgent.addBehaviour(new BroadcastGoal());
-				} else {
-					reply.setPerformative(ACLMessage.FAILURE);
-					reply.setContent("not-available");
-				}
-				myAgent.send(reply);
+				int[] point = new int[2];
+				point[0] = Integer.parseInt(parts[0]);
+				point[1] = Integer.parseInt(parts[1]);
+				goal = new GridPoint(point);
 			} else {
 				block();
 			}
+		}
+	}
+
+	/**
+	 * Checks if there are free positions left on the area.
+	 * 
+	 * @return True if there are
+	 */
+	private boolean checkFreePositions() {
+		boolean found = false;
+		for (int[] row : searchMatrix) {
+			found = IntStream.of(row).anyMatch(x -> x == 0);
+			if (found) {
+				break;
+			}
+		}
+		return found;
+	}
+
+	/**
+	 * Calculates where the Soldier will start searching. TODO: Corrigir esta
+	 * funcao
+	 * 
+	 * @return String with position where to start and the distance
+	 */
+	private String getSearchInfo() {
+		String search = "";
+		boolean found = false;
+		int i = 0;
+		int j = 0;
+		int counter = 0;
+		for (; j < searchMatrix.length; j++) {
+			for (; i < searchMatrix.length; i++) {
+				if (searchMatrix[j][i] == 0) {
+					found = true;
+					search += j + "_" + i;
+					break;
+				}
+			}
+			if (found) {
+				break;
+			}
+		}
+
+		if (found) {
+			for (; i < searchMatrix.length; i++) {
+				System.out.print(i);
+				System.out.print(j);
+				System.out.print(searchMatrix[j][i]);
+				System.out.println();
+				if (searchMatrix[j][i] == 0 && communicationRadius - counter > 0) {
+					counter++;
+				} else {
+					break;
+				}
+			}
+			search += "_" + counter;
+		}
+
+		updateSearchMatrix(j, i, counter);
+
+		return search;
+	}
+
+	/**
+	 * Updates the searchMatrix.
+	 * 
+	 * @param column
+	 * @param row
+	 * @param distance
+	 */
+	private void updateSearchMatrix(int column, int row, int distance) {
+		for (int i = 0; i < distance; i++) {
+			searchMatrix[column][row] = 1;
 		}
 	}
 

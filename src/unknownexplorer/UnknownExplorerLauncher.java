@@ -77,9 +77,12 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 
 		try {
 			N_CAPTAINS = params.getInteger("N_CAPTAINS");
+			int BOARD_DIM = params.getInteger("BOARD_DIM");
+			Captain[] caps = new Captain[N_CAPTAINS];
 			for (int i = 0; i < N_CAPTAINS; i++) {
-				Captain c = new Captain(space, grid);
+				Captain c = new Captain(space, grid, BOARD_DIM);
 				mainContainer.acceptNewAgent("Captain" + i, c).start();
+				caps[i] = c;
 
 				NdPoint pt = space.getLocation(c);
 				grid.moveTo(c, (int) pt.getX(), (int) pt.getY());
@@ -88,17 +91,19 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 			N_SOLDIERS = params.getInteger("N_SOLDIERS");
 			int xinitCoord = 0;
 			int yinitCoord = 0;
+			int counter = 0;
 			for (int i = 0; i < N_SOLDIERS; i++) {
-				Soldier s = new Soldier(space, grid,xinitCoord,yinitCoord);
+				Soldier s = new Soldier(space, grid, caps[counter].getAID(), xinitCoord, yinitCoord);
 				mainContainer.acceptNewAgent("Soldier" + i, s).start();
 
 				NdPoint pt = space.getLocation(s);
 				grid.moveTo(s, (int) pt.getX(), (int) pt.getY());
-				yinitCoord +=5;
-				//grid.moveTo(s,xinitCoord,yinitCoord);
-				//space.moveTo(s, xinitCoord, yinitCoord);
-				
-				
+				yinitCoord += 5;
+
+				counter++;
+				if (counter >= N_CAPTAINS) {
+					counter = 0;
+				}
 			}
 		} catch (StaleProxyException e) {
 			e.printStackTrace();
@@ -115,17 +120,19 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 	}
 
 	private void launchEnvironment(Context<Object> context) {
-		int xdim = 50;
-		int ydim = 50;
+		Parameters params = RunEnvironment.getInstance().getParameters();
+		int BOARD_DIM = params.getInteger("BOARD_DIM");
+		int xdim = BOARD_DIM;
+		int ydim = BOARD_DIM;
 		ContinuousSpaceFactory spaceFactory = ContinuousSpaceFactoryFinder.createContinuousSpaceFactory(null);
 		space = spaceFactory.createContinuousSpace("space", context, new RandomCartesianAdder<Object>(),
 				new repast.simphony.space.continuous.WrapAroundBorders(), xdim, ydim);
 
 		GridFactory gridFactory = GridFactoryFinder.createGridFactory(null);
 		grid = gridFactory.createGrid("grid", context, new GridBuilderParameters<Object>(new WrapAroundBorders(),
-				new SimpleGridAdder<Object>(), true, 50, 50));
+				new SimpleGridAdder<Object>(), true, xdim, ydim));
 
-		//WALLS
+		// WALLS
 		for (int i = 0; i < 100; i++) {
 			Wall w = new Wall();
 			context.add(w);
@@ -133,7 +140,7 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 			grid.moveTo(w, (int) pt.getX(), (int) pt.getY());
 		}
 
-		//OBJ POINT 
+		// OBJ POINT
 		Objective o = new Objective();
 		context.add(o);
 		NdPoint pt = space.getLocation(o);

@@ -3,6 +3,10 @@
 
 	<parameter name="randomSeed" displayName="Default Random Seed"
 		type="int" defaultValue="__NULL__" />
+		
+	<parameter name="BOARD_DIM" displayName="BOARD_DIM" type="int"
+		defaultValue="50" isReadOnly="false"
+		converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
 
 	<parameter name="N_CAPTAINS" displayName="N_CAPTAINS" type="int"
 		defaultValue="3" isReadOnly="false"
