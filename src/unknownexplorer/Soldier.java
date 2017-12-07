@@ -92,12 +92,10 @@ public class Soldier extends Agent {
 				ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
 				cfp.addReceiver(myCaptain);
 				cfp.setContent(xSoldier + "_" + ySoldier);
-				cfp.setConversationId("comns");
-				cfp.setReplyWith("cfp" + System.currentTimeMillis());
+				cfp.setConversationId("position_to_search");
 				myAgent.send(cfp);
 
-				mt = MessageTemplate.and(MessageTemplate.MatchConversationId("comns"),
-						MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
+				mt = MessageTemplate.MatchConversationId("position_to_search");
 				step = 1;
 				break;
 
@@ -113,11 +111,10 @@ public class Soldier extends Agent {
 						point[1] = Integer.parseInt(parts[1]);
 						distanceToSearch = Double.parseDouble(parts[2]);
 						search = new GridPoint(point);
+						step = 2;
 					} else if (reply.getPerformative() == ACLMessage.REFUSE) {
-						// TODO: on hold, wait and ask again
+						step = 0;
 					}
-
-					step = 0;
 				}
 				break;
 

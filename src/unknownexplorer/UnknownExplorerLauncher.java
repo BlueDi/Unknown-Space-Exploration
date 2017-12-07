@@ -24,6 +24,7 @@ import sajas.sim.repasts.RepastSLauncher;
 import sajas.wrapper.ContainerController;
 
 public class UnknownExplorerLauncher extends RepastSLauncher {
+	private static int BOARD_DIM = 50;
 	private static int N_SOLDIERS = 10;
 	private static int N_CAPTAINS = 3;
 
@@ -74,10 +75,11 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 	// AGENTS INIT POS
 	private void launchAgents() {
 		Parameters params = RunEnvironment.getInstance().getParameters();
+		N_CAPTAINS = params.getInteger("N_CAPTAINS");
+		BOARD_DIM = params.getInteger("BOARD_DIM");
+		N_SOLDIERS = params.getInteger("N_SOLDIERS");
 
 		try {
-			N_CAPTAINS = params.getInteger("N_CAPTAINS");
-			int BOARD_DIM = params.getInteger("BOARD_DIM");
 			Captain[] caps = new Captain[N_CAPTAINS];
 			for (int i = 0; i < N_CAPTAINS; i++) {
 				Captain c = new Captain(space, grid, BOARD_DIM);
@@ -88,7 +90,6 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 				grid.moveTo(c, (int) pt.getX(), (int) pt.getY());
 			}
 
-			N_SOLDIERS = params.getInteger("N_SOLDIERS");
 			int xinitCoord = 0;
 			int yinitCoord = 0;
 			int counter = 0;

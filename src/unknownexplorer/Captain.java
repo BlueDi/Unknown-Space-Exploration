@@ -1,6 +1,6 @@
 package unknownexplorer;
 
-import java.util.Random;
+import java.util.Arrays;
 import java.util.stream.IntStream;
 
 import jade.core.AID;
@@ -19,6 +19,7 @@ import sajas.domain.DFService;
 
 /**
  * Captain Agent, the one who commands.
+ */
 public class Captain extends Agent {
 	private ContinuousSpace<Object> space;
 	private Grid<Object> grid;
@@ -43,6 +44,7 @@ public class Captain extends Agent {
 	 * <P>
 	 * 4: another captain zone;
 	 * <P>
+	 * 5: goal.
 	 */
 	int[][] searchMatrix;
 
@@ -63,10 +65,8 @@ public class Captain extends Agent {
 	 * Initialize the Captain.
 	 */
 	protected void setup() {
-		Random r = new Random();
-		double[] randomNumbers = r.doubles(2, 0, 101).toArray();
-		xCaptain = randomNumbers[0];
-		yCaptain = randomNumbers[1];
+		xCaptain = searchMatrix.length / 2;
+		yCaptain = xCaptain;
 
 		communicationRadius = 5;
 		visionRadius = 5000;
@@ -88,7 +88,7 @@ public class Captain extends Agent {
 
 		addBehaviour(new ExchangeInformation());
 		addBehaviour(new ListenBroadcastGoal());
-		addBehaviour(new CaptainBehaviour());
+		addBehaviour(new ReceiveGoal());
 		addBehaviour(new MoveBehaviour());
 		System.err.println("Captain " + getAID().getName() + " is ready.");
 	}
@@ -107,17 +107,73 @@ public class Captain extends Agent {
 		private static final long serialVersionUID = 1L;
 
 		public void action() {
-			ACLMessage message = myAgent.receive();
+			MessageTemplate mt = MessageTemplate.or(MessageTemplate.MatchConversationId("position_to_search"),
+					MessageTemplate.MatchConversationId("new_occupied_zone"));
+			ACLMessage message = myAgent.receive(mt);
 			if (message != null) {
 				ACLMessage reply = message.createReply();
-				if (checkFreePositions()) {
-					reply.setPerformative(ACLMessage.PROPOSE);
-					reply.setContent(getSearchInfo());
-				} else {
-					reply.setPerformative(ACLMessage.REFUSE);
+				if (message.getSender().getName().startsWith("Soldier")
+						&& message.getConversationId() == "position_to_search") {
+					if (checkNearFreePositions()) {
+						reply.setPerformative(ACLMessage.PROPOSE);
+						reply.setContent(getSearchInfo());
+					} else {
+						reply.setPerformative(ACLMessage.REFUSE);
+					}
+				} else if (message.getSender().getName().startsWith("Captain")
+						&& message.getConversationId() == "new_occupied_zone") {
+					String msg = reply.getContent();
+					String[] parts = msg.split("_");
+					int[] point = new int[2];
+					point[0] = Integer.parseInt(parts[0]);
+					point[1] = Integer.parseInt(parts[1]);
+					point[2] = Integer.parseInt(parts[2]);
+					updateSearchMatrix(point[1], point[0], point[2]);
+					reply.setPerformative(ACLMessage.CONFIRM);
 				}
 				myAgent.send(reply);
 			}
+		}
+	}
+
+	/**
+	 * Behaviour to change the position of the captain to another zone and
+	 * communicate his new zone to the other captains.
+	 */
+	private class MoveToAnotherZone extends Behaviour {
+		private static final long serialVersionUID = 1L;
+
+		@Override
+		public void action() {
+			ACLMessage newZoneMessage = new ACLMessage(ACLMessage.PROPOSE);
+			newZoneMessage.setConversationId("new_occupied_zone");
+
+			int i = 0;
+			int j = 0;
+			while (searchMatrix[j][i] != 0 && j != searchMatrix.length) {
+				i++;
+				if (i == searchMatrix.length) {
+					i = 0;
+					j++;
+				}
+			}
+
+			if (j != searchMatrix.length) {
+				newZoneMessage.setContent(i + "_" + j + "_" + communicationRadius);
+
+				space.moveTo(myAgent, xCaptain, yCaptain);
+				grid.moveTo(myAgent, (int) xCaptain, (int) yCaptain);
+			} else {
+				newZoneMessage.setContent(-1 + "_" + -1 + "_" + communicationRadius);
+			}
+
+			myAgent.send(newZoneMessage);
+		}
+
+		@Override
+		public boolean done() {
+			// TODO Auto-generated method stub
+			return false;
 		}
 	}
 
@@ -207,7 +263,10 @@ public class Captain extends Agent {
 		}
 	}
 
-	private class CaptainBehaviour extends CyclicBehaviour {
+	/**
+	 * Behaviour to receive information about the goal from a Soldier.
+	 */
+	private class ReceiveGoal extends CyclicBehaviour {
 		private static final long serialVersionUID = 1L;
 
 		public void action() {
@@ -221,6 +280,7 @@ public class Captain extends Agent {
 				point[0] = Integer.parseInt(parts[0]);
 				point[1] = Integer.parseInt(parts[1]);
 				goal = new GridPoint(point);
+				addBehaviour(new BroadcastGoal());
 			} else {
 				block();
 			}
@@ -244,19 +304,41 @@ public class Captain extends Agent {
 	}
 
 	/**
-	 * Calculates where the Soldier will start searching. TODO: Corrigir esta
-	 * funcao
+	 * Checks if there are free positions on the captain area.
+	 * 
+	 * @return True if there are
+	 */
+	private boolean checkNearFreePositions() {
+		boolean found = false;
+		for (int i = (int) yCaptain; i < searchMatrix.length && i < yCaptain + communicationRadius; i++) {
+			int last = (int) (xCaptain + communicationRadius);
+			if (last < searchMatrix.length) {
+				found = IntStream.of(Arrays.copyOfRange(searchMatrix[i], (int) xCaptain, last)).anyMatch(x -> x == 0);
+			} else {
+				found = IntStream.of(Arrays.copyOfRange(searchMatrix[i], (int) xCaptain, searchMatrix.length))
+						.anyMatch(x -> x == 0);
+			}
+			if (found) {
+				break;
+			}
+		}
+		return found;
+	}
+
+	/**
+	 * Calculates where the Soldier will start searching.
 	 * 
 	 * @return String with position where to start and the distance
 	 */
 	private String getSearchInfo() {
 		String search = "";
 		boolean found = false;
-		int i = 0;
-		int j = 0;
+		int i = (int) xCaptain;
+		int j = (int) yCaptain;
 		int counter = 0;
-		for (; j < searchMatrix.length; j++) {
-			for (; i < searchMatrix.length; i++) {
+
+		for (; j < searchMatrix.length && j < yCaptain + communicationRadius; j++) {
+			for (; i < searchMatrix.length && i < xCaptain + communicationRadius; i++) {
 				if (searchMatrix[j][i] == 0) {
 					found = true;
 					search += j + "_" + i;
@@ -277,6 +359,8 @@ public class Captain extends Agent {
 				}
 			}
 			search += "_" + counter;
+		} else {
+			addBehaviour(new MoveToAnotherZone());
 		}
 
 		updateSearchMatrix(j, i, counter);
