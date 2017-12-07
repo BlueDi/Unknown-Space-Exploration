@@ -14,6 +14,9 @@ import sajas.core.Agent;
 import sajas.core.behaviours.Behaviour;
 import sajas.core.behaviours.CyclicBehaviour;
 
+/**
+ * Soldier Agent, the one who searches.
+ */
 public class Soldier extends Agent {
 	private ContinuousSpace<Object> space;
 	private Grid<Object> grid;
@@ -28,6 +31,15 @@ public class Soldier extends Agent {
 	private double distanceToSearch;
 	private int[] position = new int[2];
 
+	/**
+	 * Soldier constructor.
+	 * 
+	 * @param space
+	 * @param grid
+	 * @param myCaptain
+	 * @param x
+	 * @param y
+	 */
 	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid, AID myCaptain, int x, int y) {
 		this.space = space;
 		this.grid = grid;
@@ -35,9 +47,11 @@ public class Soldier extends Agent {
 		position[0] = x;
 		position[1] = y;
 		search = new GridPoint(position);
-
 	}
 
+	/**
+	 * Initialize the Soldier.
+	 */
 	protected void setup() {
 		xSoldier = position[0];
 		ySoldier = position[1];
@@ -53,10 +67,19 @@ public class Soldier extends Agent {
 		System.out.println("Soldier " + getAID().getName() + " is ready.");
 	}
 
+	/**
+	 * Terminate the Soldier.
+	 */
 	protected void takeDown() {
 		System.out.println("Soldier " + getAID().getName() + " terminating.");
 	}
 
+	/**
+	 * The Soldier will ask his Captain for a position for him to search. With
+	 * that position he will search within a radius. After he searches every
+	 * position he has to, he will communicate with the Captain, which will give
+	 * him another zone.
+	 */
 	private class SoldierBehaviour extends Behaviour {
 		private static final long serialVersionUID = 1L;
 		private MessageTemplate mt;
@@ -168,7 +191,7 @@ public class Soldier extends Agent {
 	}
 
 	/**
-	 * Sends the goal to the captain.
+	 * Sends the goal to the Captain.
 	 */
 	private class SendGoal extends Behaviour {
 		private static final long serialVersionUID = 1L;
@@ -190,6 +213,11 @@ public class Soldier extends Agent {
 		}
 	}
 
+	/**
+	 * Updates the position of the Soldier to move it towards pt.
+	 * 
+	 * @param pt
+	 */
 	public void moveTowards(GridPoint pt) {
 		if (!pt.equals(grid.getLocation(this))) {
 			if (xSoldier > pt.getX()) {

@@ -17,6 +17,8 @@ import sajas.core.behaviours.Behaviour;
 import sajas.core.behaviours.CyclicBehaviour;
 import sajas.domain.DFService;
 
+/**
+ * Captain Agent, the one who commands.
 public class Captain extends Agent {
 	private ContinuousSpace<Object> space;
 	private Grid<Object> grid;
@@ -30,16 +32,23 @@ public class Captain extends Agent {
 
 	/**
 	 * searchMatrix values will be 0, 1, 2, 3, or 4.
-	 * <P>0: default, unknown of whats in there;
-	 * <P>1: a soldier is searching it;
-	 * <P>2: position searched & empty; 
-	 * <P>3: position searched & wall; 
-	 * <P>4: goal.
+	 * <P>
+	 * 0: default, unknown of what's in there;
+	 * <P>
+	 * 1: a soldier is searching it;
+	 * <P>
+	 * 2: position searched & empty;
+	 * <P>
+	 * 3: position searched & wall;
+	 * <P>
+	 * 4: another captain zone;
+	 * <P>
 	 */
 	int[][] searchMatrix;
 
 	/**
 	 * Captain constructor
+	 * 
 	 * @param space
 	 * @param grid
 	 * @param BOARD_DIM
@@ -51,7 +60,7 @@ public class Captain extends Agent {
 	}
 
 	/**
-	 * Initialize Captain.
+	 * Initialize the Captain.
 	 */
 	protected void setup() {
 		Random r = new Random();
@@ -84,17 +93,19 @@ public class Captain extends Agent {
 		System.err.println("Captain " + getAID().getName() + " is ready.");
 	}
 
+	/**
+	 * Terminate the Captain.
+	 */
 	protected void takeDown() {
 		System.out.println("Captain " + getAID().getName() + " terminating.");
 	}
 
+	/**
+	 * Negotiation with the other agents about positioning.
+	 */
 	private class ExchangeInformation extends CyclicBehaviour {
 		private static final long serialVersionUID = 1L;
 
-		/**
-		 * The Soldier will send his position to the Captain. The captain will
-		 * say if they are in range to exchange information.
-		 */
 		public void action() {
 			ACLMessage message = myAgent.receive();
 			if (message != null) {
@@ -110,6 +121,10 @@ public class Captain extends Agent {
 		}
 	}
 
+	/**
+	 * When the captain receives information about the goal from one of his
+	 * soldiers he will broadcast the goal position to the other captains.
+	 */
 	private class BroadcastGoal extends Behaviour {
 		private static final long serialVersionUID = 1L;
 		private AID[] allCaptains;
@@ -141,7 +156,6 @@ public class Captain extends Agent {
 			cfp.setConversationId("broadcast_goal");
 			cfp.setReplyWith("cfp" + System.currentTimeMillis());
 			myAgent.send(cfp);
-			System.out.println(cfp.toString());
 		}
 
 		@Override
@@ -151,6 +165,10 @@ public class Captain extends Agent {
 		}
 	}
 
+	/**
+	 * The captain is always listening to other captains information about the
+	 * goal.
+	 */
 	private class ListenBroadcastGoal extends CyclicBehaviour {
 		private static final long serialVersionUID = 1L;
 
@@ -171,6 +189,12 @@ public class Captain extends Agent {
 		}
 	}
 
+	/**
+	 * The captain will always be trying to reach the goal.
+	 * <P>
+	 * The goal can be the final destination or the new search position of the
+	 * captain.
+	 */
 	private class MoveBehaviour extends CyclicBehaviour {
 		private static final long serialVersionUID = 1L;
 
@@ -246,10 +270,6 @@ public class Captain extends Agent {
 
 		if (found) {
 			for (; i < searchMatrix.length; i++) {
-				System.out.print(i);
-				System.out.print(j);
-				System.out.print(searchMatrix[j][i]);
-				System.out.println();
 				if (searchMatrix[j][i] == 0 && communicationRadius - counter > 0) {
 					counter++;
 				} else {
@@ -277,6 +297,11 @@ public class Captain extends Agent {
 		}
 	}
 
+	/**
+	 * Moves the Captain towards the point.
+	 * 
+	 * @param pt
+	 */
 	public void moveTowards(GridPoint pt) {
 		if (!pt.equals(grid.getLocation(this))) {
 			if (xCaptain > pt.getX()) {
