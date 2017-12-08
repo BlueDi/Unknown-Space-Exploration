@@ -30,6 +30,7 @@ public class Soldier extends Agent {
 	private GridPoint goal;
 	private double distanceToSearch;
 	private int[] position = new int[2];
+	private int[] myInfo = { -1 };
 
 	/**
 	 * Soldier constructor.
@@ -91,7 +92,8 @@ public class Soldier extends Agent {
 			case 0:
 				ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
 				cfp.addReceiver(myCaptain);
-				cfp.setContent(xSoldier + "_" + ySoldier);
+				String content = generateSoldierReport();
+				cfp.setContent(xSoldier + "_" + ySoldier + "_" + content);
 				cfp.setConversationId("position_to_search");
 				myAgent.send(cfp);
 
@@ -110,6 +112,7 @@ public class Soldier extends Agent {
 						point[0] = Integer.parseInt(parts[0]);
 						point[1] = Integer.parseInt(parts[1]);
 						distanceToSearch = Double.parseDouble(parts[2]);
+						myInfo = new int[(int) distanceToSearch];
 						search = new GridPoint(point);
 						step = 2;
 					} else if (reply.getPerformative() == ACLMessage.REFUSE) {
@@ -150,12 +153,15 @@ public class Soldier extends Agent {
 		@Override
 		public void action() {
 			double distance = Math.abs(search.getX() - xSoldier) + Math.abs(search.getY() - ySoldier);
-			if (distanceToSearch > 0 && distance < 0.2) {
+			if (distanceToSearch > 0) {
 				distanceToSearch--;
 				int[] point = new int[2];
 				point[0] = search.getX() + 1;
 				point[1] = search.getY();
 				search = new GridPoint(point);
+				analyseArea(search);
+			} else {
+				addBehaviour(new SoldierBehaviour());
 			}
 			try {
 				moveTowards(search);
@@ -208,6 +214,39 @@ public class Soldier extends Agent {
 			// TODO Receive confirmation of received information
 			return false;
 		}
+	}
+
+	/**
+	 * Checks if the area next to the Soldier has Walls.
+	 * 
+	 * @param pt
+	 */
+	private void analyseArea(GridPoint pt) {
+		GridCellNgh<Wall> nghCreator = new GridCellNgh<Wall>(grid, pt, Wall.class, 0, 0);
+		List<GridCell<Wall>> gridCells = nghCreator.getNeighborhood(true);
+
+		for (int i = 0; i < gridCells.size(); i++) {
+			int position = (int) (myInfo.length - distanceToSearch - 1);
+			if (gridCells.get(i).size() > 0) {
+				myInfo[position] = 3;
+			} else {
+				myInfo[position] = 2;
+			}
+		}
+	}
+
+	/**
+	 * Creates a string with values found near the Soldier.
+	 * 
+	 * @return Values next to the Soldier
+	 */
+	private String generateSoldierReport() {
+		String report = "";
+		for (int value : myInfo) {
+			report += value + "_";
+		}
+		report = report.substring(0, report.length() - 1);
+		return report;
 	}
 
 	/**

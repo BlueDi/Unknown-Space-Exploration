@@ -114,6 +114,7 @@ public class Captain extends Agent {
 				ACLMessage reply = message.createReply();
 				if (message.getSender().getName().startsWith("Soldier")
 						&& message.getConversationId() == "position_to_search") {
+					storeReport(reply.getContent());
 					if (checkNearFreePositions()) {
 						reply.setPerformative(ACLMessage.PROPOSE);
 						reply.setContent(getSearchInfo());
@@ -378,6 +379,27 @@ public class Captain extends Agent {
 	private void updateSearchMatrix(int column, int row, int distance) {
 		for (int i = 0; i < distance; i++) {
 			searchMatrix[column][row] = 1;
+		}
+	}
+
+	/**
+	 * Updates the searchMatrix by report. The first two parameters should be
+	 * the first position and the following values of the matrix.
+	 * 
+	 * @param report
+	 *            String with the first position and the next values
+	 */
+	private void storeReport(String report) {
+		if (report != null) {
+			String[] parts = report.split("_");
+			int x = Integer.parseInt(parts[0]);
+			int y = Integer.parseInt(parts[1]);
+
+			if (x != -1) {
+				for (int i = 2; i < parts.length; i++) {
+					searchMatrix[y][x + i - 2] = Integer.parseInt(parts[i]);
+				}
+			}
 		}
 	}
 
