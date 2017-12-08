@@ -1,5 +1,6 @@
 package unknownexplorer;
 
+import java.util.Arrays;
 import java.util.List;
 
 import jade.core.AID;
@@ -31,6 +32,7 @@ public class Soldier extends Agent {
 	private double distanceToSearch;
 	private int[] position = new int[2];
 	private int[] myInfo = { -1 };
+	private double visionRadius;
 
 	/**
 	 * Soldier constructor.
@@ -41,13 +43,14 @@ public class Soldier extends Agent {
 	 * @param x
 	 * @param y
 	 */
-	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid, AID myCaptain, int x, int y) {
+	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid, AID myCaptain, int x, int y, double visionRadius) {
 		this.space = space;
 		this.grid = grid;
 		this.myCaptain = myCaptain;
 		position[0] = x;
 		position[1] = y;
 		search = new GridPoint(position);
+		this.visionRadius = visionRadius;
 	}
 
 	/**
@@ -76,10 +79,10 @@ public class Soldier extends Agent {
 	}
 
 	/**
-	 * The Soldier will ask his Captain for a position for him to search. With
-	 * that position he will search within a radius. After he searches every
-	 * position he has to, he will communicate with the Captain, which will give
-	 * him another zone.
+	 * The Soldier will ask his Captain for a position for him to search. With that
+	 * position he will search within a radius. After he searches every position he
+	 * has to, he will communicate with the Captain, which will give him another
+	 * zone.
 	 */
 	private class SoldierBehaviour extends Behaviour {
 		private static final long serialVersionUID = 1L;
@@ -113,6 +116,7 @@ public class Soldier extends Agent {
 						point[1] = (int) Double.parseDouble(parts[1]);
 						distanceToSearch = Double.parseDouble(parts[2]);
 						myInfo = new int[(int) distanceToSearch];
+						Arrays.fill(myInfo, 2);
 						search = new GridPoint(point);
 						step = 2;
 					} else if (reply.getPerformative() == ACLMessage.REFUSE) {
@@ -152,21 +156,20 @@ public class Soldier extends Agent {
 
 		@Override
 		public void action() {
-			double distance = Math.abs(search.getX() - xSoldier) + Math.abs(search.getY() - ySoldier);
 			if (distanceToSearch > 0) {
-				distanceToSearch--;
 				int[] point = new int[2];
 				point[0] = search.getX() + 1;
 				point[1] = search.getY();
 				search = new GridPoint(point);
-				analyseArea(search);
+				try {
+					moveTowards(search);
+				} catch (NullPointerException e) {
+				}
+				distanceToSearch--;
 			} else {
 				addBehaviour(new SoldierBehaviour());
 			}
-			try {
-				moveTowards(search);
-			} catch (NullPointerException e) {
-			}
+
 		}
 	}
 
@@ -222,16 +225,15 @@ public class Soldier extends Agent {
 	 * @param pt
 	 */
 	private void analyseArea(GridPoint pt) {
-		GridCellNgh<Wall> nghCreator = new GridCellNgh<Wall>(grid, pt, Wall.class, 0, 0);
+		GridCellNgh<Wall> nghCreator = new GridCellNgh<Wall>(grid, pt, Wall.class, (int) visionRadius, 0);
 		List<GridCell<Wall>> gridCells = nghCreator.getNeighborhood(true);
 
-		for (int i = 0; i < gridCells.size(); i++) {
-			int position = (int) (myInfo.length - distanceToSearch - 1);
-			if (gridCells.get(i).size() > 0) {
-				myInfo[position] = 3;
-			} else {
-				myInfo[position] = 2;
+		for (GridCell<Wall> cell : gridCells) {
+			if ((cell.getPoint().getX() < (int) xSoldier + distanceToSearch)
+					&& cell.getPoint().getX() >= (int) xSoldier) {
+				myInfo[cell.getPoint().getX() - (int) xSoldier] = 3;
 			}
+
 		}
 	}
 
@@ -270,6 +272,8 @@ public class Soldier extends Agent {
 
 			space.moveTo(this, xSoldier, ySoldier);
 			grid.moveTo(this, (int) xSoldier, (int) ySoldier);
+		} else {
+			analyseArea(pt);
 		}
 	}
 }

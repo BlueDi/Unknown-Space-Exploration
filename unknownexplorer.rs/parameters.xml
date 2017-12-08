@@ -15,5 +15,10 @@
 	<parameter name="N_SOLDIERS" displayName="N_SOLDIERS" type="int"
 		defaultValue="10" isReadOnly="false"
 		converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
+		
+		
+	<parameter name="VISION_RADIUS" displayName="VISION_RADIUS" type="double"
+		defaultValue="5" isReadOnly="false"
+		converter="repast.simphony.parameter.StringConverterFactory$IntConverter" />
 
 </parameters>

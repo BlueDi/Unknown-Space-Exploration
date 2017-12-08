@@ -16,7 +16,7 @@ import repast.simphony.space.continuous.RandomCartesianAdder;
 import repast.simphony.space.grid.Grid;
 import repast.simphony.space.grid.GridBuilderParameters;
 import repast.simphony.space.grid.SimpleGridAdder;
-import repast.simphony.space.grid.WrapAroundBorders;
+import repast.simphony.space.grid.StrictBorders;
 import sajas.core.AID;
 import sajas.core.Agent;
 import sajas.core.Runtime;
@@ -27,6 +27,7 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 	private static int BOARD_DIM = 50;
 	private static int N_SOLDIERS = 10;
 	private static int N_CAPTAINS = 3;
+	private static double VISION_RADIUS = 0.1 * BOARD_DIM;
 
 	private ContinuousSpace<Object> space;
 	private Grid<Object> grid;
@@ -78,6 +79,7 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 		N_CAPTAINS = params.getInteger("N_CAPTAINS");
 		BOARD_DIM = params.getInteger("BOARD_DIM");
 		N_SOLDIERS = params.getInteger("N_SOLDIERS");
+		VISION_RADIUS = params.getDouble("VISION_RADIUS");
 
 		try {
 			Captain[] caps = new Captain[N_CAPTAINS];
@@ -94,7 +96,7 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 			int yinitCoord = 0;
 			int counter = 0;
 			for (int i = 0; i < N_SOLDIERS; i++) {
-				Soldier s = new Soldier(space, grid, caps[counter].getAID(), xinitCoord, yinitCoord);
+				Soldier s = new Soldier(space, grid, caps[counter].getAID(), xinitCoord, yinitCoord, VISION_RADIUS);
 				mainContainer.acceptNewAgent("Soldier" + i, s).start();
 
 				NdPoint pt = space.getLocation(s);
@@ -127,10 +129,10 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 		int ydim = BOARD_DIM;
 		ContinuousSpaceFactory spaceFactory = ContinuousSpaceFactoryFinder.createContinuousSpaceFactory(null);
 		space = spaceFactory.createContinuousSpace("space", context, new RandomCartesianAdder<Object>(),
-				new repast.simphony.space.continuous.WrapAroundBorders(), xdim, ydim);
+				new repast.simphony.space.continuous.StrictBorders(), xdim, ydim);
 
 		GridFactory gridFactory = GridFactoryFinder.createGridFactory(null);
-		grid = gridFactory.createGrid("grid", context, new GridBuilderParameters<Object>(new WrapAroundBorders(),
+		grid = gridFactory.createGrid("grid", context, new GridBuilderParameters<Object>(new StrictBorders(),
 				new SimpleGridAdder<Object>(), true, xdim, ydim));
 
 		// WALLS

@@ -28,8 +28,7 @@ public class Captain extends Agent {
 	private double yCaptain;
 	private GridPoint goal;
 	private int communicationRadius; // TODO: communicationRadius must come from
-										// the parameters.
-	private int visionRadius;
+	// the parameters.
 
 	/**
 	 * searchMatrix values will be 0, 1, 2, 3, or 4.
@@ -69,7 +68,6 @@ public class Captain extends Agent {
 		yCaptain = xCaptain;
 
 		communicationRadius = 5;
-		visionRadius = 5000;
 
 		space.moveTo(this, xCaptain, yCaptain);
 		grid.moveTo(this, (int) xCaptain, (int) yCaptain);
@@ -116,7 +114,7 @@ public class Captain extends Agent {
 						&& message.getConversationId() == "position_to_search") {
 					if (!message.getContent().isEmpty())
 						storeReport(message.getContent());
-					
+
 					if (checkNearFreePositions()) {
 						reply.setPerformative(ACLMessage.PROPOSE);
 						reply.setContent(getSearchInfo());
@@ -153,18 +151,18 @@ public class Captain extends Agent {
 
 			int i = 0;
 			int j = 0;
-			while (searchMatrix[j][i] != 0 && j != searchMatrix.length) {
-				i++;
-				if (i == searchMatrix.length) {
-					i = 0;
-					j++;
+			while (searchMatrix[j][i] != 0 && i != searchMatrix.length) {
+				j++;
+				if (j == searchMatrix.length) {
+					j = 0;
+					i++;
 				}
 			}
 
-			if (j != searchMatrix.length) {
-				newZoneMessage.setContent(i + "_" + j + "_" + communicationRadius);
-				xCaptain = i;
-				yCaptain = j;
+			if (i != searchMatrix.length) {
+				newZoneMessage.setContent(j + "_" + i + "_" + communicationRadius);
+				xCaptain = j;
+				yCaptain = i;
 
 				space.moveTo(myAgent, xCaptain, yCaptain);
 				grid.moveTo(myAgent, (int) xCaptain, (int) yCaptain);
@@ -183,8 +181,8 @@ public class Captain extends Agent {
 	}
 
 	/**
-	 * When the captain receives information about the goal from one of his
-	 * soldiers he will broadcast the goal position to the other captains.
+	 * When the captain receives information about the goal from one of his soldiers
+	 * he will broadcast the goal position to the other captains.
 	 */
 	private class BroadcastGoal extends Behaviour {
 		private static final long serialVersionUID = 1L;
@@ -227,8 +225,7 @@ public class Captain extends Agent {
 	}
 
 	/**
-	 * The captain is always listening to other captains information about the
-	 * goal.
+	 * The captain is always listening to other captains information about the goal.
 	 */
 	private class ListenBroadcastGoal extends CyclicBehaviour {
 		private static final long serialVersionUID = 1L;
@@ -343,7 +340,7 @@ public class Captain extends Agent {
 
 		for (; j < searchMatrix.length && j < yCaptain + communicationRadius; j++) {
 			for (; i < searchMatrix.length && i < xCaptain + communicationRadius; i++) {
-				if (searchMatrix[j][i] == 0) {
+				if (searchMatrix[i][j] == 0) {
 					found = true;
 					break;
 				}
@@ -355,7 +352,7 @@ public class Captain extends Agent {
 
 		if (found) {
 			for (; i < searchMatrix.length; i++) {
-				if (searchMatrix[j][i] == 0 && communicationRadius - counter > 0) {
+				if (searchMatrix[i][j] == 0 && communicationRadius - counter > 0) {
 					counter++;
 				} else {
 					break;
@@ -365,9 +362,9 @@ public class Captain extends Agent {
 			addBehaviour(new MoveToAnotherZone());
 		}
 
-		updateSearchMatrix(j, i, counter);
+		updateSearchMatrix(i, j, counter);
 
-		return j + "_" + i + "_" + counter;
+		return i + "_" + j + "_" + counter;
 	}
 
 	/**
@@ -384,8 +381,8 @@ public class Captain extends Agent {
 	}
 
 	/**
-	 * Updates the searchMatrix by report. The first two parameters should be
-	 * the first position and the following values of the matrix.
+	 * Updates the searchMatrix by report. The first two parameters should be the
+	 * first position and the following values of the matrix.
 	 * 
 	 * @param report
 	 *            String with the first position and the next values
