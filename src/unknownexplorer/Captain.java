@@ -336,7 +336,6 @@ public class Captain extends Agent {
 	 * @return String with position where to start and the distance
 	 */
 	private String getSearchInfo() {
-		String search = "";
 		boolean found = false;
 		int i = (int) xCaptain;
 		int j = (int) yCaptain;
@@ -346,7 +345,6 @@ public class Captain extends Agent {
 			for (; i < searchMatrix.length && i < xCaptain + communicationRadius; i++) {
 				if (searchMatrix[j][i] == 0) {
 					found = true;
-					search += j + "_" + i;
 					break;
 				}
 			}
@@ -366,11 +364,10 @@ public class Captain extends Agent {
 		} else {
 			addBehaviour(new MoveToAnotherZone());
 		}
-		search += "_" + counter;
 
 		updateSearchMatrix(j, i, counter);
 
-		return search;
+		return j + "_" + i + "_" + counter;
 	}
 
 	/**
