@@ -114,7 +114,9 @@ public class Captain extends Agent {
 				ACLMessage reply = message.createReply();
 				if (message.getSender().getName().startsWith("Soldier")
 						&& message.getConversationId() == "position_to_search") {
-					storeReport(reply.getContent());
+					if (!message.getContent().isEmpty())
+						storeReport(message.getContent());
+					
 					if (checkNearFreePositions()) {
 						reply.setPerformative(ACLMessage.PROPOSE);
 						reply.setContent(getSearchInfo());
@@ -161,6 +163,8 @@ public class Captain extends Agent {
 
 			if (j != searchMatrix.length) {
 				newZoneMessage.setContent(i + "_" + j + "_" + communicationRadius);
+				xCaptain = i;
+				yCaptain = j;
 
 				space.moveTo(myAgent, xCaptain, yCaptain);
 				grid.moveTo(myAgent, (int) xCaptain, (int) yCaptain);
@@ -359,10 +363,10 @@ public class Captain extends Agent {
 					break;
 				}
 			}
-			search += "_" + counter;
 		} else {
 			addBehaviour(new MoveToAnotherZone());
 		}
+		search += "_" + counter;
 
 		updateSearchMatrix(j, i, counter);
 
@@ -390,15 +394,13 @@ public class Captain extends Agent {
 	 *            String with the first position and the next values
 	 */
 	private void storeReport(String report) {
-		if (report != null) {
-			String[] parts = report.split("_");
-			int x = Integer.parseInt(parts[0]);
-			int y = Integer.parseInt(parts[1]);
+		String[] parts = report.split("_");
+		int x = (int) Double.parseDouble(parts[0]);
+		int y = (int) Double.parseDouble(parts[1]);
 
-			if (x != -1) {
-				for (int i = 2; i < parts.length; i++) {
-					searchMatrix[y][x + i - 2] = Integer.parseInt(parts[i]);
-				}
+		if (x != -1) {
+			for (int i = 2; i < parts.length; i++) {
+				searchMatrix[y][x + i - 2] = (int) Double.parseDouble(parts[i]);
 			}
 		}
 	}
