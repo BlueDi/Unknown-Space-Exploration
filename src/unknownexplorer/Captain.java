@@ -118,8 +118,9 @@ public class Captain extends Agent {
 					if (checkNearFreePositions()) {
 						reply.setPerformative(ACLMessage.PROPOSE);
 						reply.setContent(getSearchInfo());
-					} else {
+					} else if (checkNoSoldierWorking()) {
 						reply.setPerformative(ACLMessage.REFUSE);
+						addBehaviour(new MoveToAnotherZone());
 					}
 				} else if (message.getSender().getName().startsWith("Captain")
 						&& message.getConversationId() == "new_occupied_zone") {
@@ -181,8 +182,8 @@ public class Captain extends Agent {
 	}
 
 	/**
-	 * When the captain receives information about the goal from one of his soldiers
-	 * he will broadcast the goal position to the other captains.
+	 * When the captain receives information about the goal from one of his
+	 * soldiers he will broadcast the goal position to the other captains.
 	 */
 	private class BroadcastGoal extends Behaviour {
 		private static final long serialVersionUID = 1L;
@@ -225,7 +226,8 @@ public class Captain extends Agent {
 	}
 
 	/**
-	 * The captain is always listening to other captains information about the goal.
+	 * The Captain is always listening to other captains information about the
+	 * goal.
 	 */
 	private class ListenBroadcastGoal extends CyclicBehaviour {
 		private static final long serialVersionUID = 1L;
@@ -328,6 +330,30 @@ public class Captain extends Agent {
 	}
 
 	/**
+	 * Checks if there are Soldiers working on the Captain area.
+	 * 
+	 * @return True if there are
+	 */
+	private boolean checkNoSoldierWorking() {
+		boolean foundSoldierWorking = false;
+		for (int i = (int) yCaptain; i < searchMatrix.length && i < yCaptain + communicationRadius; i++) {
+			int last = (int) (xCaptain + communicationRadius);
+			if (last < searchMatrix.length) {
+				foundSoldierWorking = IntStream.of(Arrays.copyOfRange(searchMatrix[i], (int) xCaptain, last))
+						.anyMatch(x -> x == 1);
+			} else {
+				foundSoldierWorking = IntStream
+						.of(Arrays.copyOfRange(searchMatrix[i], (int) xCaptain, searchMatrix.length))
+						.anyMatch(x -> x == 1);
+			}
+			if (foundSoldierWorking) {
+				break;
+			}
+		}
+		return foundSoldierWorking;
+	}
+
+	/**
 	 * Calculates where the Soldier will start searching.
 	 * 
 	 * @return String with position where to start and the distance
@@ -358,8 +384,6 @@ public class Captain extends Agent {
 					break;
 				}
 			}
-		} else {
-			addBehaviour(new MoveToAnotherZone());
 		}
 
 		updateSearchMatrix(i, j, counter);
@@ -381,8 +405,8 @@ public class Captain extends Agent {
 	}
 
 	/**
-	 * Updates the searchMatrix by report. The first two parameters should be the
-	 * first position and the following values of the matrix.
+	 * Updates the searchMatrix by report. The first two parameters should be
+	 * the first position and the following values of the matrix.
 	 * 
 	 * @param report
 	 *            String with the first position and the next values
