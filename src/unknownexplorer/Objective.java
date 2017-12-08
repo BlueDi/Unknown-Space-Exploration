@@ -14,6 +14,6 @@ public class Objective {
 	}
 
 	public String toString() {
-		return "Objective, [" + xObjective + ", " + yObjective + "]";
+		return "Wall, [" + xObjective + ", " + yObjective + "]";
 	}
 }
