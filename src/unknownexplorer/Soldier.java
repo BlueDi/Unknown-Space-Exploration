@@ -109,8 +109,8 @@ public class Soldier extends Agent {
 						String msg = reply.getContent();
 						String[] parts = msg.split("_");
 						int[] point = new int[2];
-						point[0] = (int) Double.parseDouble(parts[0]);
-						point[1] = (int) Double.parseDouble(parts[1]);
+						point[0] = Integer.parseInt(parts[0]);
+						point[1] = Integer.parseInt(parts[1]);
 						distanceToSearch = Double.parseDouble(parts[2]);
 						myInfo = new int[(int) distanceToSearch];
 						search = new GridPoint(point);
