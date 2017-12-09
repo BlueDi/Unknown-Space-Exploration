@@ -101,7 +101,6 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 
 				NdPoint pt = space.getLocation(s);
 				grid.moveTo(s, (int) pt.getX(), (int) pt.getY());
-				yinitCoord += 5;
 
 				counter++;
 				if (counter >= N_CAPTAINS) {

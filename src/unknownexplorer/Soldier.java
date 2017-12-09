@@ -31,7 +31,7 @@ public class Soldier extends Agent {
 	private GridPoint goal;
 	private double distanceToSearch;
 	private int[] position = new int[2];
-	private int[] myInfo = { -1 };
+	private int[] myInfo;
 	private double visionRadius;
 
 	/**
@@ -59,7 +59,7 @@ public class Soldier extends Agent {
 	protected void setup() {
 		xSoldier = position[0];
 		ySoldier = position[1];
-		velocitySoldier = 2;
+		velocitySoldier = 1;
 
 		space.moveTo(this, xSoldier, ySoldier);
 		grid.moveTo(this, (int) xSoldier, (int) ySoldier);
@@ -79,10 +79,10 @@ public class Soldier extends Agent {
 	}
 
 	/**
-	 * The Soldier will ask his Captain for a position for him to search. With that
-	 * position he will search within a radius. After he searches every position he
-	 * has to, he will communicate with the Captain, which will give him another
-	 * zone.
+	 * The Soldier will ask his Captain for a position for him to search. With
+	 * that position he will search within a radius. After he searches every
+	 * position he has to, he will communicate with the Captain, which will give
+	 * him another zone.
 	 */
 	private class SoldierBehaviour extends Behaviour {
 		private static final long serialVersionUID = 1L;
@@ -157,15 +157,15 @@ public class Soldier extends Agent {
 		@Override
 		public void action() {
 			if (distanceToSearch > 0) {
-				int[] point = new int[2];
-				point[0] = search.getX() + 1;
-				point[1] = search.getY();
-				search = new GridPoint(point);
+				distanceToSearch--;
 				try {
 					moveTowards(search);
 				} catch (NullPointerException e) {
 				}
-				distanceToSearch--;
+				int[] point = new int[2];
+				point[0] = search.getX() + 1;
+				point[1] = search.getY();
+				search = new GridPoint(point);
 			} else {
 				addBehaviour(new SoldierBehaviour());
 			}
@@ -244,10 +244,15 @@ public class Soldier extends Agent {
 	 */
 	private String generateSoldierReport() {
 		String report = "";
-		for (int value : myInfo) {
-			report += value + "_";
+		if(myInfo == null)
+			return report;
+		
+		if (myInfo.length > 0) {
+			for (int value : myInfo) {
+				report += value + "_";
+			}
+			report = report.substring(0, report.length() - 1);
 		}
-		report = report.substring(0, report.length() - 1);
 		return report;
 	}
 
@@ -260,13 +265,13 @@ public class Soldier extends Agent {
 		if (!pt.equals(grid.getLocation(this))) {
 			if (xSoldier > pt.getX()) {
 				xSoldier -= velocitySoldier;
-			} else {
+			} else if (xSoldier < pt.getX()) {
 				xSoldier += velocitySoldier;
 			}
 
 			if (ySoldier > pt.getY()) {
 				ySoldier -= velocitySoldier;
-			} else {
+			} else if (ySoldier < pt.getY()) {
 				ySoldier += velocitySoldier;
 			}
 
