@@ -29,6 +29,7 @@ public class Captain extends Agent {
 
 	private AID general;
 	private boolean ready;
+	private boolean searchingNewPosition;
 	private double xCaptain;
 	private double yCaptain;
 	private GridPoint goal;

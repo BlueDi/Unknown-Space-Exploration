@@ -121,7 +121,6 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 
 				counter++;
 				if (counter >= N_CAPTAINS) {
-					counter = 0;
 					counter = 1;
 				}
 			}
