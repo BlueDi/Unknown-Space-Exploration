@@ -1,6 +1,7 @@
 package unknownexplorer;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.IntStream;
 
 import jade.core.AID;
@@ -24,6 +25,9 @@ public class Captain extends Agent {
 	private ContinuousSpace<Object> space;
 	private Grid<Object> grid;
 
+	private List<jade.core.AID> otherCaptains;
+
+	private AID general;
 	private boolean ready;
 	private double xCaptain;
 	private double yCaptain;
@@ -47,6 +51,14 @@ public class Captain extends Agent {
 	 * 5: goal.
 	 */
 	int[][] searchMatrix;
+
+	public void setGeneral(AID general) {
+		this.general = general;
+	}
+
+	public void setOtherCaptains(List<AID> otherCaptains) {
+		this.otherCaptains = otherCaptains;
+	}
 
 	/**
 	 * Captain constructor
@@ -81,7 +93,8 @@ public class Captain extends Agent {
 		}
 
 		addBehaviour(new ExchangeInformation());
-		addBehaviour(new MoveToAnotherZone());
+		if (general != null)
+			addBehaviour(new MoveToAnotherZone());
 		addBehaviour(new ListenBroadcastGoal());
 		addBehaviour(new ReceiveGoal());
 		addBehaviour(new MoveBehaviour());
@@ -121,7 +134,7 @@ public class Captain extends Agent {
 					} else {
 						reply.setPerformative(ACLMessage.REFUSE);
 					}
-				} else if (message.getSender().getName().startsWith("Captain")
+				} else if (general == null && message.getSender().getName().startsWith("Captain")
 						&& message.getConversationId() == "new_occupied_zone"
 						&& message.getPerformative() == ACLMessage.PROPOSE) {
 					System.out.println(myAgent.getAID() + " " + message);
@@ -133,10 +146,10 @@ public class Captain extends Agent {
 					point[2] = Integer.parseInt(parts[2]);
 					System.out.println(point[0] + " - " + Arrays.toString(searchMatrix[point[1]]));
 					if (searchMatrix[point[1]][point[0]] == 0) {
-						System.out.println("OK");
 						reply.setPerformative(ACLMessage.CONFIRM);
+						updateSearchMatrixCaptain(point[0], point[1], point[2]);
 					} else {
-						reply.setPerformative(ACLMessage.FAILURE);
+						reply.setPerformative(ACLMessage.CANCEL);
 					}
 					reply.setContent(msg);
 				} else if (message.getSender().getName().startsWith("Captain")
@@ -151,17 +164,27 @@ public class Captain extends Agent {
 					point[1] = Integer.parseInt(parts[1]);
 					point[2] = Integer.parseInt(parts[2]);
 
+					System.out.println(point[0] + " - " + Arrays.toString(searchMatrix[point[1]]));
 					xCaptain = point[0];
 					yCaptain = point[1];
 					space.moveTo(myAgent, xCaptain, yCaptain);
 					grid.moveTo(myAgent, (int) xCaptain, (int) yCaptain);
 
 					updateSearchMatrixCaptain(point[0], point[1], point[2]);
+					System.out.println(point[0] + " - " + Arrays.toString(searchMatrix[point[1]]));
 					reply.setPerformative(ACLMessage.UNKNOWN);
 				} else if (message.getSender().getName().startsWith("Captain")
 						&& message.getConversationId() == "new_occupied_zone"
-						&& message.getPerformative() == ACLMessage.FAILURE) {
+						&& message.getPerformative() == ACLMessage.CANCEL) {
+					reply.setPerformative(ACLMessage.UNKNOWN);
 					System.out.println(myAgent.getAID() + " " + message);
+					String msg = message.getContent();
+					String[] parts = msg.split("_");
+					int[] point = new int[3];
+					point[0] = Integer.parseInt(parts[0]);
+					point[1] = Integer.parseInt(parts[1]);
+					point[2] = Integer.parseInt(parts[2]);
+					updateSearchMatrixCaptain(point[0], point[1], point[2]);
 					addBehaviour(new MoveToAnotherZone());
 				}
 
@@ -183,56 +206,68 @@ public class Captain extends Agent {
 			newZoneMessage.setConversationId("new_occupied_zone");
 
 			boolean found = false;
-			int i = (int) (xCaptain - communicationRadius);
-			int j = (int) (yCaptain - communicationRadius);
-			if (i < 0)
-				i = 0;
-			if (j < 0)
-				j = 0;
-			for (; i < searchMatrix.length && i < xCaptain + communicationRadius; i++) {
-				for (; j < searchMatrix.length && j < yCaptain + communicationRadius; j++) {
+			boolean valid = false;
+			int i = 0;// (int) (xCaptain - communicationRadius);
+			int j = 0; // (int) (yCaptain - communicationRadius);
+			int xFirst0 = -1;
+			int yFirst0 = -1;
+			int nPositions = 2 * communicationRadius;
+			int xCounter = nPositions;
+			int yCounter = nPositions;
+			for (; j < searchMatrix.length; j++) {
+				int tempCounter = 0;
+				for (; i < searchMatrix.length; i++) {
 					if (searchMatrix[j][i] == 0) {
+						if (xFirst0 == -1 && yFirst0 == -1) {
+							xFirst0 = i;
+							yFirst0 = j;
+						}
+						tempCounter++;
 						found = true;
+					} else {
+						found = false;
+						break;
+					}
+
+					if (xCounter >= nPositions) {
+						found = true;
+						valid = true;
 						break;
 					}
 				}
-				if (found)
+				if (found) {
+					if (tempCounter < xCounter) {
+						xCounter = tempCounter;
+					}
+					yCounter--;
+					found = false;
+				} else {
+					break;
+				}
+				if (yCounter >= nPositions)
 					break;
 			}
 
-			if (found) {
-				newZoneMessage.setContent(i + "_" + j + "_" + communicationRadius);
-			} else {
-				newZoneMessage.setContent(-1 + "_" + -1 + "_" + communicationRadius);
+			nPositions = (xCounter > yCounter) ? yCounter : xCounter;
+
+			System.out.println("Pos : " + xFirst0 + "-" + yFirst0 + ", Counters: " + xCounter + "-" + yCounter);
+			System.out.println(myAgent.getLocalName() + "-" + (xFirst0 + (nPositions / 2)) + "-"
+					+ (yFirst0 + (nPositions / 2)) + ": " + Arrays.toString(searchMatrix[0]));
+
+			newZoneMessage
+					.setContent((xFirst0 + (nPositions / 2)) + "_" + (yFirst0 + (nPositions / 2)) + "_" + nPositions);
+
+			System.out.println(newZoneMessage.getContent());
+
+			if (general != null) {
+				newZoneMessage.addReceiver(general);
+				myAgent.send(newZoneMessage);
 			}
-
-			try {
-				DFAgentDescription template = new DFAgentDescription();
-				ServiceDescription sd = new ServiceDescription();
-				sd.setType("Comunication");
-				template.addServices(sd);
-
-				DFAgentDescription[] result = DFService.search(myAgent, template);
-				AID[] allCaptains = new AID[result.length];
-				for (int l = 0; l < result.length; ++l) {
-					if (result[l].getName() != myAgent.getAID())
-						allCaptains[l] = result[l].getName();
-				}
-				for (int k = 0; k < allCaptains.length; ++k) {
-					newZoneMessage.addReceiver(allCaptains[k]);
-				}
-			} catch (FIPAException fe) {
-				fe.printStackTrace();
-			}
-
-			myAgent.send(newZoneMessage);
 		}
 
 		@Override
 		public boolean done() {
-			if (ready)
-				return true;
-			return false;
+			return true;
 		}
 	}
 
@@ -242,30 +277,12 @@ public class Captain extends Agent {
 	 */
 	private class BroadcastGoal extends Behaviour {
 		private static final long serialVersionUID = 1L;
-		private AID[] allCaptains;
 
 		@Override
 		public void action() {
-			// Update the list of Captains
-			DFAgentDescription template = new DFAgentDescription();
-			ServiceDescription sd = new ServiceDescription();
-			sd.setType("Comunication");
-			template.addServices(sd);
-			try {
-				DFAgentDescription[] result = DFService.search(myAgent, template);
-				System.out.println(getAID().getName() + " found " + result.length + " captains.");
-				allCaptains = new AID[result.length];
-				for (int i = 0; i < result.length; ++i) {
-					allCaptains[i] = result[i].getName();
-				}
-			} catch (FIPAException fe) {
-				fe.printStackTrace();
-			}
-
-			// Send the goal to all Captains
 			ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
-			for (int i = 0; i < allCaptains.length; ++i) {
-				cfp.addReceiver(allCaptains[i]);
+			for (int k = 0; k < otherCaptains.size(); k++) {
+				cfp.addReceiver(otherCaptains.get(k));
 			}
 			cfp.setContent(goal.getX() + "_" + goal.getY());
 			cfp.setConversationId("broadcast_goal");
@@ -527,8 +544,10 @@ public class Captain extends Agent {
 				yCaptain++;
 			}
 
-			space.moveTo(this, xCaptain, yCaptain);
-			grid.moveTo(this, (int) xCaptain, (int) yCaptain);
+			if (general != null) {
+				space.moveTo(this, xCaptain, yCaptain);
+				grid.moveTo(this, (int) xCaptain, (int) yCaptain);
+			}
 		}
 	}
 }

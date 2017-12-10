@@ -22,7 +22,8 @@ import sajas.core.Agent;
 import sajas.core.Runtime;
 import sajas.sim.repasts.RepastSLauncher;
 import sajas.wrapper.ContainerController;
-import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UnknownExplorerLauncher extends RepastSLauncher {
 	private static int BOARD_DIM = 50;
@@ -77,20 +78,34 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 	// AGENTS INIT POS
 	private void launchAgents() {
 		Parameters params = RunEnvironment.getInstance().getParameters();
-		N_CAPTAINS = params.getInteger("N_CAPTAINS");
+		N_CAPTAINS = params.getInteger("N_CAPTAINS") + 1;
 		BOARD_DIM = params.getInteger("BOARD_DIM");
 		N_SOLDIERS = params.getInteger("N_SOLDIERS");
 		VISION_RADIUS = params.getDouble("VISION_RADIUS");
 
+		List<jade.core.AID> allCaptains = new ArrayList<jade.core.AID>();
 		try {
 			Captain[] caps = new Captain[N_CAPTAINS];
 			for (int i = 0; i < N_CAPTAINS; i++) {
 				Captain c = new Captain(space, grid, BOARD_DIM);
 				mainContainer.acceptNewAgent("Captain" + i, c).start();
 				caps[i] = c;
+				if (i != 0)
+					c.setGeneral(caps[0].getAID());
+				allCaptains.add(c.getAID());
 
 				NdPoint pt = space.getLocation(c);
 				grid.moveTo(c, (int) pt.getX(), (int) pt.getY());
+			}
+
+			for (int i = 0; i < N_CAPTAINS; i++) {
+				List<jade.core.AID> otherCaptains = new ArrayList<>();
+				Captain c = caps[i];
+				allCaptains.forEach(captainAID -> {
+					if (captainAID != c.getAID())
+						otherCaptains.add(captainAID);
+				});
+				c.setOtherCaptains(otherCaptains);
 			}
 
 			int xinitCoord = 0;
