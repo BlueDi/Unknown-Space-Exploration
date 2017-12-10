@@ -206,14 +206,14 @@ public class Captain extends Agent {
 			newZoneMessage.setConversationId("new_occupied_zone");
 
 			boolean found = false;
-			boolean valid = false;
+			//boolean valid = true;
 			int i = 0;// (int) (xCaptain - communicationRadius);
 			int j = 0; // (int) (yCaptain - communicationRadius);
 			int xFirst0 = -1;
 			int yFirst0 = -1;
 			int nPositions = 2 * communicationRadius;
-			int xCounter = nPositions;
-			int yCounter = nPositions;
+			int xCounter = 0;
+			int yCounter = 0;
 			for (; j < searchMatrix.length; j++) {
 				int tempCounter = 0;
 				for (; i < searchMatrix.length; i++) {
@@ -225,37 +225,38 @@ public class Captain extends Agent {
 						tempCounter++;
 						found = true;
 					} else {
-						found = false;
 						break;
 					}
 
-					if (xCounter >= nPositions) {
-						found = true;
-						valid = true;
+					if (tempCounter >= nPositions) {
+						//valid = false;
 						break;
 					}
 				}
+				
 				if (found) {
-					if (tempCounter < xCounter) {
+					if(xCounter == 0)
+						xCounter = tempCounter;
+					else if (tempCounter < xCounter) {
 						xCounter = tempCounter;
 					}
-					yCounter--;
+					yCounter++;
 					found = false;
-				} else {
+				}else {
 					break;
 				}
 				if (yCounter >= nPositions)
 					break;
 			}
 
-			nPositions = (xCounter > yCounter) ? yCounter : xCounter;
+			nPositions = (xCounter >= yCounter) ? yCounter : xCounter;
 
 			System.out.println("Pos : " + xFirst0 + "-" + yFirst0 + ", Counters: " + xCounter + "-" + yCounter);
 			System.out.println(myAgent.getLocalName() + "-" + (xFirst0 + (nPositions / 2)) + "-"
 					+ (yFirst0 + (nPositions / 2)) + ": " + Arrays.toString(searchMatrix[0]));
 
 			newZoneMessage
-					.setContent((xFirst0 + (nPositions / 2)) + "_" + (yFirst0 + (nPositions / 2)) + "_" + nPositions);
+					.setContent((xFirst0 + (nPositions)) + "_" + (yFirst0 + (nPositions)) + "_" + nPositions);
 
 			System.out.println(newZoneMessage.getContent());
 
