@@ -330,8 +330,12 @@ public class Captain extends Agent {
 
 		@Override
 		public void action() {
-			try {
+			label :try {
 				moveTowards(goal);
+				if(goal.getX()==(int)Objective.getxObjective() && goal.getY()==(int)Objective.getyObjective()){
+					System.out.println("Objective has been found: xCoord - " + goal.getX() + " yCoord - " + goal.getY());	
+					break label;
+				}
 			} catch (NullPointerException e) {
 			}
 		}

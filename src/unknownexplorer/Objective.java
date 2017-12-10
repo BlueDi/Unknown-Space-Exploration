@@ -3,27 +3,43 @@ package unknownexplorer;
 import java.util.Random;
 
 public class Objective {
-	private double xObjective;
-	private double yObjective;
+	private static double xObjective;
+	private static double yObjective;
 
 	public Objective() {
 		Random r = new Random();
 		double[] randomNumbers = r.doubles(2, 0, 49).toArray();
-		xObjective = randomNumbers[0];
+		setxObjective(randomNumbers[0]);
 		yObjective = randomNumbers[1];
 	}
 
 	public String toString() {
-		return "Objective, [" + xObjective + ", " + yObjective + "]";
+		return "Objective, [" + getxObjective() + ", " + yObjective + "]";
 	}
 
 	public double getDeclaredField(String string) {
 		if (string == "xObjective"){
-			return xObjective;
+			return getxObjective();
 		}
 		if(string == "yObjective"){
 			return yObjective;
 		}
 		else return 0;
+	}
+
+	public static double getxObjective() {
+		return xObjective;
+	}
+
+	public static double getyObjective() {
+		return yObjective;
+	}
+	
+	public static void setxObjective(double xObjective) {
+		Objective.xObjective = xObjective;
+	}
+
+	public static void setyObjective(double yObjective) {
+		Objective.yObjective = yObjective;
 	}
 }
