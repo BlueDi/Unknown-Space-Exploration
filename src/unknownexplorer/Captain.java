@@ -206,7 +206,7 @@ public class Captain extends Agent {
 			newZoneMessage.setConversationId("new_occupied_zone");
 
 			boolean found = false;
-			//boolean valid = true;
+			boolean foundfirst = false;
 			int i = 0;// (int) (xCaptain - communicationRadius);
 			int j = 0; // (int) (yCaptain - communicationRadius);
 			int xFirst0 = -1;
@@ -221,6 +221,7 @@ public class Captain extends Agent {
 						if (xFirst0 == -1 && yFirst0 == -1) {
 							xFirst0 = i;
 							yFirst0 = j;
+							foundfirst = true;
 						}
 						tempCounter++;
 						found = true;
@@ -234,7 +235,7 @@ public class Captain extends Agent {
 					}
 				}
 				
-				if (found) {
+				if (found && foundfirst) {
 					if(xCounter == 0)
 						xCounter = tempCounter;
 					else if (tempCounter < xCounter) {
