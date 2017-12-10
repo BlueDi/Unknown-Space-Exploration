@@ -22,6 +22,7 @@ import sajas.core.Agent;
 import sajas.core.Runtime;
 import sajas.sim.repasts.RepastSLauncher;
 import sajas.wrapper.ContainerController;
+import java.lang.reflect.Field;
 
 public class UnknownExplorerLauncher extends RepastSLauncher {
 	private static int BOARD_DIM = 50;
@@ -145,7 +146,12 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 		// OBJ POINT
 		Objective o = new Objective();
 		context.add(o);
-		NdPoint pt = space.getLocation(o);
-		grid.moveTo(o, (int) pt.getX(), (int) pt.getY());
+		double x = o.getDeclaredField("xObjective");
+		double y = o.getDeclaredField("yObjective");
+		//NdPoint pd = space.getLocation(o);
+		NdPoint pd = new NdPoint(x,y);
+		grid.moveTo(o, (int) pd.getX(), (int) pd.getY());
+		space.moveTo(o, (int) pd.getX(), (int) pd.getY());
+		System.err.println(pd.getX()+ " " + pd.getY());
 	}
 }

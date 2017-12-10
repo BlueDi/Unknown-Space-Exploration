@@ -14,6 +14,7 @@ import repast.simphony.space.grid.GridPoint;
 import sajas.core.Agent;
 import sajas.core.behaviours.Behaviour;
 import sajas.core.behaviours.CyclicBehaviour;
+import java.lang.reflect.Field;
 
 /**
  * Soldier Agent, the one who searches.
