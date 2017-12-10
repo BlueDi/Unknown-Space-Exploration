@@ -1,5 +1,8 @@
 package unknownexplorer;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.wrapper.StaleProxyException;
@@ -22,13 +25,11 @@ import sajas.core.Agent;
 import sajas.core.Runtime;
 import sajas.sim.repasts.RepastSLauncher;
 import sajas.wrapper.ContainerController;
-import java.util.ArrayList;
-import java.util.List;
 
 public class UnknownExplorerLauncher extends RepastSLauncher {
-	private static int BOARD_DIM = 50;
-	private static int N_SOLDIERS = 10;
-	private static int N_CAPTAINS = 3;
+	private static int BOARD_DIM;
+	private static int N_SOLDIERS;
+	private static int N_CAPTAINS;
 	private static double VISION_RADIUS = 0.1 * BOARD_DIM;
 
 	private ContinuousSpace<Object> space;
@@ -110,7 +111,7 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 
 			int xinitCoord = 0;
 			int yinitCoord = 0;
-			int counter = 0;
+			int counter = 1;
 			for (int i = 0; i < N_SOLDIERS; i++) {
 				Soldier s = new Soldier(space, grid, caps[counter].getAID(), xinitCoord, yinitCoord, VISION_RADIUS);
 				mainContainer.acceptNewAgent("Soldier" + i, s).start();
@@ -121,6 +122,7 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 				counter++;
 				if (counter >= N_CAPTAINS) {
 					counter = 0;
+					counter = 1;
 				}
 			}
 		} catch (StaleProxyException e) {
@@ -161,12 +163,7 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 		// OBJ POINT
 		Objective o = new Objective();
 		context.add(o);
-		double x = o.getDeclaredField("xObjective");
-		double y = o.getDeclaredField("yObjective");
-		//NdPoint pd = space.getLocation(o);
-		NdPoint pd = new NdPoint(x,y);
+		NdPoint pd = space.getLocation(o);
 		grid.moveTo(o, (int) pd.getX(), (int) pd.getY());
-		space.moveTo(o, (int) pd.getX(), (int) pd.getY());
-		System.err.println(pd.getX()+ " " + pd.getY());
 	}
 }

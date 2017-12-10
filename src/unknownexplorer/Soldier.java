@@ -14,7 +14,6 @@ import repast.simphony.space.grid.GridPoint;
 import sajas.core.Agent;
 import sajas.core.behaviours.Behaviour;
 import sajas.core.behaviours.CyclicBehaviour;
-import java.lang.reflect.Field;
 
 /**
  * Soldier Agent, the one who searches.
@@ -28,6 +27,7 @@ public class Soldier extends Agent {
 	private double xSoldier;
 	private double ySoldier;
 	private double velocitySoldier;
+	private boolean inPosition;
 	private GridPoint search;
 	private GridPoint goal;
 	private double distanceToSearch;
@@ -50,7 +50,6 @@ public class Soldier extends Agent {
 		this.myCaptain = myCaptain;
 		position[0] = x;
 		position[1] = y;
-		search = new GridPoint(position);
 		this.visionRadius = visionRadius;
 	}
 
@@ -65,7 +64,6 @@ public class Soldier extends Agent {
 		space.moveTo(this, xSoldier, ySoldier);
 		grid.moveTo(this, (int) xSoldier, (int) ySoldier);
 
-		addBehaviour(new SoldierBehaviour());
 		addBehaviour(new MoveBehaviour());
 		addBehaviour(new SearchGoal());
 
@@ -94,14 +92,14 @@ public class Soldier extends Agent {
 			switch (step) {
 			// Asks for information of where to start searching
 			case 0:
-				ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
-				cfp.addReceiver(myCaptain);
-				String content = generateSoldierReport();
-				cfp.setContent(xSoldier + "_" + ySoldier + "_" + content);
-				cfp.setConversationId("position_to_search");
-				myAgent.send(cfp);
-
 				mt = MessageTemplate.MatchConversationId("position_to_search");
+				ACLMessage message = new ACLMessage(ACLMessage.REQUEST);
+				message.addReceiver(myCaptain);
+				String content = generateSoldierReport();
+				message.setContent(xSoldier + "_" + ySoldier + "_" + content);
+				message.setConversationId("position_to_search");
+				myAgent.send(message);
+
 				step = 1;
 				break;
 
@@ -109,7 +107,7 @@ public class Soldier extends Agent {
 			case 1:
 				ACLMessage reply = myAgent.receive(mt);
 				if (reply != null) {
-					if (reply.getPerformative() == ACLMessage.PROPOSE) {
+					if (reply.getPerformative() == ACLMessage.INFORM) {
 						String msg = reply.getContent();
 						String[] parts = msg.split("_");
 						int[] point = new int[2];
@@ -125,24 +123,11 @@ public class Soldier extends Agent {
 					}
 				}
 				break;
-
-			// Confirms that received a position to search
-			case 2:
-				ACLMessage order = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
-				order.addReceiver(myCaptain);
-				order.setContent(search.getX() + "_" + search.getY());
-				order.setConversationId("comns");
-				order.setReplyWith("" + System.currentTimeMillis());
-				myAgent.send(order);
-
-				mt = MessageTemplate.and(MessageTemplate.MatchConversationId("comns"),
-						MessageTemplate.MatchInReplyTo(order.getReplyWith()));
-				step = 3;
 			}
 		}
 
 		public boolean done() {
-			if (step == 3) {
+			if (step == 2) {
 				return true;
 			}
 			return false;
@@ -157,17 +142,18 @@ public class Soldier extends Agent {
 
 		@Override
 		public void action() {
-			if (distanceToSearch > 0) {
+			try {
+				moveTowards(search);
+			} catch (NullPointerException e) {
+			}
+			if (inPosition && distanceToSearch > 0) {
 				distanceToSearch--;
-				try {
-					moveTowards(search);
-				} catch (NullPointerException e) {
-				}
 				int[] point = new int[2];
 				point[0] = search.getX() + 1;
 				point[1] = search.getY();
 				search = new GridPoint(point);
 			} else {
+				inPosition = false;
 				addBehaviour(new SoldierBehaviour());
 			}
 
@@ -245,9 +231,9 @@ public class Soldier extends Agent {
 	 */
 	private String generateSoldierReport() {
 		String report = "";
-		if(myInfo == null)
+		if (myInfo == null)
 			return report;
-		
+
 		if (myInfo.length > 0) {
 			for (int value : myInfo) {
 				report += value + "_";
@@ -279,6 +265,7 @@ public class Soldier extends Agent {
 			space.moveTo(this, xSoldier, ySoldier);
 			grid.moveTo(this, (int) xSoldier, (int) ySoldier);
 		} else {
+			inPosition = true;
 			analyseArea(pt);
 		}
 	}

@@ -121,18 +121,24 @@ public class Captain extends Agent {
 			if (message != null) {
 				ACLMessage reply = message.createReply();
 				if (message.getSender().getName().startsWith("Soldier")
-						&& message.getConversationId() == "position_to_search") {
+						&& message.getConversationId() == "position_to_search"
+						&& message.getPerformative() == ACLMessage.REQUEST) {
+					System.out.println(myAgent.getAID() + " " + message);
 					if (!message.getContent().isEmpty())
 						storeReport(message.getContent());
 
 					if (ready && checkNearFreePositions()) {
-						reply.setPerformative(ACLMessage.PROPOSE);
+						reply.setPerformative(ACLMessage.INFORM);
 						reply.setContent(getSearchInfo());
-					} else if (ready && !checkSoldierWorking()) {
+					} else if (ready && !searchingNewPosition && !checkSoldierWorking()) {
+						System.out.println("ERRO");
+						searchingNewPosition = true;
 						reply.setPerformative(ACLMessage.REFUSE);
+						reply.setContent("");
 						addBehaviour(new MoveToAnotherZone());
 					} else {
 						reply.setPerformative(ACLMessage.REFUSE);
+						reply.setContent("");
 					}
 				} else if (general == null && message.getSender().getName().startsWith("Captain")
 						&& message.getConversationId() == "new_occupied_zone"
@@ -154,6 +160,7 @@ public class Captain extends Agent {
 						&& message.getConversationId() == "new_occupied_zone"
 						&& message.getPerformative() == ACLMessage.CONFIRM) {
 					ready = true;
+					searchingNewPosition = false;
 					System.out.println(myAgent.getAID() + " " + message);
 					String msg = message.getContent();
 					String[] parts = msg.split("_");
@@ -203,16 +210,17 @@ public class Captain extends Agent {
 
 			boolean found = false;
 			boolean foundfirst = false;
-			int i = 0;
-			int j = 0;
+			int i;
+			int j;
 			int xFirst0 = -1;
 			int yFirst0 = -1;
 			int nPositions = 2 * communicationRadius;
 			int xCounter = 0;
 			int yCounter = 0;
-			for (; j < searchMatrix.length; j++) {
+			for (j = 0; j < searchMatrix.length; j++) {
 				int tempCounter = 0;
-				for (; i < searchMatrix.length; i++) {
+				found = false;
+				for (i = 0; i < searchMatrix.length; i++) {
 					if (searchMatrix[j][i] == 0) {
 						if (xFirst0 == -1 && yFirst0 == -1) {
 							xFirst0 = i;
@@ -237,14 +245,16 @@ public class Captain extends Agent {
 						xCounter = tempCounter;
 					}
 					yCounter++;
-					found = false;
 				}
 				if (yCounter >= nPositions)
 					break;
 			}
 
 			nPositions = (xCounter >= yCounter) ? yCounter : xCounter;
-			newZoneMessage.setContent((xFirst0 + nPositions) + "_" + (yFirst0 + nPositions) + "_" + nPositions);
+			newZoneMessage
+					.setContent((xFirst0 + nPositions / 2) + "_" + (yFirst0 + nPositions / 2) + "_" + (nPositions / 2));
+			System.out.println(xFirst0 + "-" + yFirst0);
+			System.out.println(xCounter + "-" + yCounter + "-" + nPositions);
 
 			if (general != null) {
 				newZoneMessage.addReceiver(general);
@@ -372,28 +382,7 @@ public class Captain extends Agent {
 	 * @return True if there are
 	 */
 	private boolean checkNearFreePositions() {
-		boolean found = false;
-		int init = (int) yCaptain - communicationRadius;
-		if (init < 0)
-			init = 0;
-
-		for (int j = init; j < searchMatrix.length && j < yCaptain + communicationRadius; j++) {
-			int first = (int) xCaptain - communicationRadius;
-			int last = (int) (xCaptain + communicationRadius);
-
-			if (first < 0) {
-				first = 0;
-			}
-			if (last > searchMatrix.length) {
-				last = searchMatrix.length;
-			}
-
-			found = IntStream.of(Arrays.copyOfRange(searchMatrix[j], first, last)).anyMatch(x -> x == 4);
-			if (found) {
-				break;
-			}
-		}
-		return found;
+		return checkZoneHas(1);
 	}
 
 	/**
@@ -402,22 +391,32 @@ public class Captain extends Agent {
 	 * @return True if there are
 	 */
 	private boolean checkSoldierWorking() {
-		boolean foundSoldierWorking = false;
-		for (int j = (int) yCaptain; j < searchMatrix.length && j < yCaptain + communicationRadius; j++) {
-			int last = (int) (xCaptain + communicationRadius);
-			if (last < searchMatrix.length) {
-				foundSoldierWorking = IntStream.of(Arrays.copyOfRange(searchMatrix[j], (int) xCaptain, last))
-						.anyMatch(x -> x == 1);
-			} else {
-				foundSoldierWorking = IntStream
-						.of(Arrays.copyOfRange(searchMatrix[j], (int) xCaptain, searchMatrix.length))
-						.anyMatch(x -> x == 1);
-			}
-			if (foundSoldierWorking) {
+		return checkZoneHas(4);
+	}
+
+	/**
+	 * Checks there is values of toSearch in the Captain zone.
+	 * 
+	 * @return True if there are
+	 */
+	private boolean checkZoneHas(int toSearch) {
+		boolean found = false;
+		int init = (int) yCaptain - communicationRadius;
+		if (init < 0)
+			init = 0;
+
+		int first = (int) (xCaptain - communicationRadius);
+		int last = (int) (xCaptain + communicationRadius);
+		first = first < 0 ? 0 : first;
+		last = last > searchMatrix.length ? searchMatrix.length - 1 : last;
+
+		for (int j = init; j < searchMatrix.length && j < yCaptain + communicationRadius; j++) {
+			found = IntStream.of(Arrays.copyOfRange(searchMatrix[j], first, last)).anyMatch(x -> x == toSearch);
+			if (found) {
 				break;
 			}
 		}
-		return foundSoldierWorking;
+		return found;
 	}
 
 	/**
@@ -436,9 +435,9 @@ public class Captain extends Agent {
 		if (j < 0)
 			j = 0;
 
-		for (; i < searchMatrix.length && i < xCaptain + communicationRadius; i++) {
-			for (; j < searchMatrix.length && j < yCaptain + communicationRadius; j++) {
-				if (searchMatrix[j][i] == 0) {
+		for (; i < searchMatrix.length && i < xCaptain + communicationRadius + 1; i++) {
+			for (; j < searchMatrix.length && j < yCaptain + communicationRadius + 1; j++) {
+				if (searchMatrix[j][i] == 1) {
 					found = true;
 					break;
 				}
@@ -450,7 +449,7 @@ public class Captain extends Agent {
 
 		if (found) {
 			for (int k = i; k < searchMatrix.length; k++) {
-				if (searchMatrix[j][k] == 0 && (2 * communicationRadius) - counter > 0) {
+				if (searchMatrix[j][k] == 1 && (2 * communicationRadius) - counter > 0) {
 					counter++;
 				} else {
 					break;
