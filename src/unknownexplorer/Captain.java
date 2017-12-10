@@ -24,6 +24,7 @@ public class Captain extends Agent {
 	private ContinuousSpace<Object> space;
 	private Grid<Object> grid;
 
+	private boolean ready;
 	private double xCaptain;
 	private double yCaptain;
 	private GridPoint goal;
@@ -57,6 +58,7 @@ public class Captain extends Agent {
 	public Captain(ContinuousSpace<Object> space, Grid<Object> grid, int BOARD_DIM) {
 		this.space = space;
 		this.grid = grid;
+		this.ready = false;
 		searchMatrix = new int[BOARD_DIM][BOARD_DIM];
 	}
 
@@ -64,12 +66,7 @@ public class Captain extends Agent {
 	 * Initialize the Captain.
 	 */
 	protected void setup() {
-		addBehaviour(new MoveToAnotherZone());
-
 		communicationRadius = 5;
-
-		space.moveTo(this, xCaptain, yCaptain);
-		grid.moveTo(this, (int) xCaptain, (int) yCaptain);
 
 		DFAgentDescription dfd = new DFAgentDescription();
 		dfd.setName(getAID());
@@ -84,6 +81,7 @@ public class Captain extends Agent {
 		}
 
 		addBehaviour(new ExchangeInformation());
+		addBehaviour(new MoveToAnotherZone());
 		addBehaviour(new ListenBroadcastGoal());
 		addBehaviour(new ReceiveGoal());
 		addBehaviour(new MoveBehaviour());
@@ -114,26 +112,59 @@ public class Captain extends Agent {
 					if (!message.getContent().isEmpty())
 						storeReport(message.getContent());
 
-					if (checkNearFreePositions()) {
+					if (ready && checkNearFreePositions()) {
 						reply.setPerformative(ACLMessage.PROPOSE);
 						reply.setContent(getSearchInfo());
-					} else if (checkNoSoldierWorking()) {
+					} else if (ready && !checkSoldierWorking()) {
 						reply.setPerformative(ACLMessage.REFUSE);
 						addBehaviour(new MoveToAnotherZone());
 					} else {
 						reply.setPerformative(ACLMessage.REFUSE);
 					}
 				} else if (message.getSender().getName().startsWith("Captain")
-						&& message.getConversationId() == "new_occupied_zone") {
-					String msg = reply.getContent();
+						&& message.getConversationId() == "new_occupied_zone"
+						&& message.getPerformative() == ACLMessage.PROPOSE) {
+					System.out.println(myAgent.getAID() + " " + message);
+					String msg = message.getContent();
 					String[] parts = msg.split("_");
-					int[] point = new int[2];
+					int[] point = new int[3];
 					point[0] = Integer.parseInt(parts[0]);
 					point[1] = Integer.parseInt(parts[1]);
 					point[2] = Integer.parseInt(parts[2]);
+					System.out.println(point[0] + " - " + Arrays.toString(searchMatrix[point[1]]));
+					if (searchMatrix[point[1]][point[0]] == 0) {
+						System.out.println("OK");
+						reply.setPerformative(ACLMessage.CONFIRM);
+					} else {
+						reply.setPerformative(ACLMessage.FAILURE);
+					}
+					reply.setContent(msg);
+				} else if (message.getSender().getName().startsWith("Captain")
+						&& message.getConversationId() == "new_occupied_zone"
+						&& message.getPerformative() == ACLMessage.CONFIRM) {
+					ready = true;
+					System.out.println(myAgent.getAID() + " " + message);
+					String msg = message.getContent();
+					String[] parts = msg.split("_");
+					int[] point = new int[3];
+					point[0] = Integer.parseInt(parts[0]);
+					point[1] = Integer.parseInt(parts[1]);
+					point[2] = Integer.parseInt(parts[2]);
+
+					xCaptain = point[0];
+					yCaptain = point[1];
+					space.moveTo(myAgent, xCaptain, yCaptain);
+					grid.moveTo(myAgent, (int) xCaptain, (int) yCaptain);
+
 					updateSearchMatrixCaptain(point[0], point[1], point[2]);
-					reply.setPerformative(ACLMessage.CONFIRM);
+					reply.setPerformative(ACLMessage.UNKNOWN);
+				} else if (message.getSender().getName().startsWith("Captain")
+						&& message.getConversationId() == "new_occupied_zone"
+						&& message.getPerformative() == ACLMessage.FAILURE) {
+					System.out.println(myAgent.getAID() + " " + message);
+					addBehaviour(new MoveToAnotherZone());
 				}
+
 				myAgent.send(reply);
 			}
 		}
@@ -151,25 +182,47 @@ public class Captain extends Agent {
 			ACLMessage newZoneMessage = new ACLMessage(ACLMessage.PROPOSE);
 			newZoneMessage.setConversationId("new_occupied_zone");
 
-			int i = communicationRadius;
-			int j = communicationRadius;
-			while (searchMatrix[j][i] != 0 && i != searchMatrix.length) {
-				j++;
-				if (j == searchMatrix.length) {
-					j = 0;
-					i++;
+			boolean found = false;
+			int i = (int) (xCaptain - communicationRadius);
+			int j = (int) (yCaptain - communicationRadius);
+			if (i < 0)
+				i = 0;
+			if (j < 0)
+				j = 0;
+			for (; i < searchMatrix.length && i < xCaptain + communicationRadius; i++) {
+				for (; j < searchMatrix.length && j < yCaptain + communicationRadius; j++) {
+					if (searchMatrix[j][i] == 0) {
+						found = true;
+						break;
+					}
 				}
+				if (found)
+					break;
 			}
 
-			if (i != searchMatrix.length) {
+			if (found) {
 				newZoneMessage.setContent(i + "_" + j + "_" + communicationRadius);
-				xCaptain = i;
-				yCaptain = j;
-
-				space.moveTo(myAgent, xCaptain, yCaptain);
-				grid.moveTo(myAgent, (int) xCaptain, (int) yCaptain);
 			} else {
 				newZoneMessage.setContent(-1 + "_" + -1 + "_" + communicationRadius);
+			}
+
+			try {
+				DFAgentDescription template = new DFAgentDescription();
+				ServiceDescription sd = new ServiceDescription();
+				sd.setType("Comunication");
+				template.addServices(sd);
+
+				DFAgentDescription[] result = DFService.search(myAgent, template);
+				AID[] allCaptains = new AID[result.length];
+				for (int l = 0; l < result.length; ++l) {
+					if (result[l].getName() != myAgent.getAID())
+						allCaptains[l] = result[l].getName();
+				}
+				for (int k = 0; k < allCaptains.length; ++k) {
+					newZoneMessage.addReceiver(allCaptains[k]);
+				}
+			} catch (FIPAException fe) {
+				fe.printStackTrace();
 			}
 
 			myAgent.send(newZoneMessage);
@@ -177,7 +230,8 @@ public class Captain extends Agent {
 
 		@Override
 		public boolean done() {
-			// TODO Auto-generated method stub
+			if (ready)
+				return true;
 			return false;
 		}
 	}
@@ -330,7 +384,7 @@ public class Captain extends Agent {
 				last = searchMatrix.length;
 			}
 
-			found = IntStream.of(Arrays.copyOfRange(searchMatrix[j], first, last)).anyMatch(x -> x == 0);
+			found = IntStream.of(Arrays.copyOfRange(searchMatrix[j], first, last)).anyMatch(x -> x == 4);
 			if (found) {
 				break;
 			}
@@ -343,7 +397,7 @@ public class Captain extends Agent {
 	 * 
 	 * @return True if there are
 	 */
-	private boolean checkNoSoldierWorking() {
+	private boolean checkSoldierWorking() {
 		boolean foundSoldierWorking = false;
 		for (int j = (int) yCaptain; j < searchMatrix.length && j < yCaptain + communicationRadius; j++) {
 			int last = (int) (xCaptain + communicationRadius);
@@ -414,7 +468,7 @@ public class Captain extends Agent {
 	 */
 	private void updateSearchMatrixSoldier(int column, int row, int distance) {
 		for (int i = 0; i < distance; i++) {
-			searchMatrix[row][column + i] = 1;
+			searchMatrix[row][column + i] = 4;
 		}
 	}
 
@@ -430,7 +484,7 @@ public class Captain extends Agent {
 	private void updateSearchMatrixCaptain(int column, int row, int distance) {
 		for (int j = row - distance; j < row + distance; j++) {
 			for (int i = column - distance; i < column + distance; i++) {
-				if (i > 0 && j > 0 && i < searchMatrix.length && j < searchMatrix.length) {
+				if (i >= 0 && j >= 0 && i < searchMatrix.length && j < searchMatrix.length) {
 					searchMatrix[j][i] = 1;
 				}
 			}
