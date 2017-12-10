@@ -162,7 +162,10 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 		// OBJ POINT
 		Objective o = new Objective();
 		context.add(o);
-		NdPoint pd = space.getLocation(o);
+		double x = o.getDeclaredField("xObjective");
+		double y = o.getDeclaredField("yObjective");
+		NdPoint pd = new NdPoint(x,y);
 		grid.moveTo(o, (int) pd.getX(), (int) pd.getY());
+		space.moveTo(o, (int) pd.getX(), (int) pd.getY());
 	}
 }

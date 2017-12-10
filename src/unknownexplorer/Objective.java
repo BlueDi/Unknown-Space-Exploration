@@ -1,6 +1,5 @@
 package unknownexplorer;
 
-import java.lang.reflect.Field;
 import java.util.Random;
 
 public class Objective {
@@ -8,10 +7,10 @@ public class Objective {
 	private double yObjective;
 
 	public Objective() {
-		//Random r = new Random();
-		//double[] randomNumbers = r.doubles(2, 0, 101).toArray();
-		xObjective = 0;// randomNumbers[0];
-		yObjective = 0;//randomNumbers[1];
+		Random r = new Random();
+		double[] randomNumbers = r.doubles(2, 0, 49).toArray();
+		xObjective = randomNumbers[0];
+		yObjective = randomNumbers[1];
 	}
 
 	public String toString() {
@@ -22,6 +21,9 @@ public class Objective {
 		if (string == "xObjective"){
 			return xObjective;
 		}
-		else return yObjective;
+		if(string == "yObjective"){
+			return yObjective;
+		}
+		else return 0;
 	}
 }
