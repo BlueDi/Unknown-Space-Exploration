@@ -10,11 +10,11 @@ public class Objective {
 		Random r = new Random();
 		double[] randomNumbers = r.doubles(2, 0, 49).toArray();
 		setxObjective(randomNumbers[0]);
-		yObjective = randomNumbers[1];
+		setyObjective(randomNumbers[1]);
 	}
 
 	public String toString() {
-		return "Objective, [" + getxObjective() + ", " + yObjective + "]";
+		return "Objective, [" + getxObjective() + ", " + getyObjective() + "]";
 	}
 
 	public double getDeclaredField(String string) {
@@ -22,7 +22,7 @@ public class Objective {
 			return getxObjective();
 		}
 		if(string == "yObjective"){
-			return yObjective;
+			return getyObjective();
 		}
 		else return 0;
 	}
