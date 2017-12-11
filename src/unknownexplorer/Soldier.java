@@ -26,6 +26,8 @@ public class Soldier extends Agent {
 
 	private double xSoldier;
 	private double ySoldier;
+	private double xTempSoldier;
+	private double yTempSoldier;
 	private double velocitySoldier;
 	private boolean inPosition;
 	private GridPoint search;
@@ -96,7 +98,7 @@ public class Soldier extends Agent {
 				ACLMessage message = new ACLMessage(ACLMessage.REQUEST);
 				message.addReceiver(myCaptain);
 				String content = generateSoldierReport();
-				message.setContent(xSoldier + "_" + ySoldier + "_" + content);
+				message.setContent(xTempSoldier + "_" + yTempSoldier + "_" + content);
 				message.setConversationId("position_to_search");
 				myAgent.send(message);
 
@@ -113,6 +115,8 @@ public class Soldier extends Agent {
 						int[] point = new int[2];
 						point[0] = (int) Double.parseDouble(parts[0]);
 						point[1] = (int) Double.parseDouble(parts[1]);
+						xTempSoldier = point[0];
+						yTempSoldier = point[1];
 						distanceToSearch = Double.parseDouble(parts[2]);
 						myInfo = new int[(int) distanceToSearch];
 						Arrays.fill(myInfo, 2);
@@ -146,7 +150,7 @@ public class Soldier extends Agent {
 				moveTowards(search);
 			} catch (NullPointerException e) {
 			}
-			if (inPosition && distanceToSearch > 0) {
+			if (inPosition && distanceToSearch > 1) {
 				distanceToSearch--;
 				int[] point = new int[2];
 				point[0] = search.getX() + 1;

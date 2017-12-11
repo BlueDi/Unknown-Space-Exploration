@@ -223,9 +223,9 @@ public class Captain extends Agent {
 				}
 			}
 
-			for (j = xFirst0; j < searchMatrix.length && yCounter < nPositions; j++, yCounter++) {
+			for (j = yFirst0; j < searchMatrix.length && yCounter < nPositions; j++, yCounter++) {
 				xCounter = 0;
-				for (i = yFirst0; i < searchMatrix.length && xCounter < nPositions; i++) {
+				for (i = xFirst0; i < searchMatrix.length && xCounter < nPositions; i++) {
 					if (searchMatrix[j][i] == 0) {
 						xCounter++;
 					} else {
