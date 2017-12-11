@@ -31,6 +31,8 @@ public class Captain extends Agent {
 	private boolean ready;
 	private double xCaptain;
 	private double yCaptain;
+	private double xTempCaptain;
+	private double yTempCaptain;
 	private GridPoint goal;
 	private int communicationRadius; // TODO: communicationRadius must come from
 	// the parameters.
@@ -163,6 +165,8 @@ public class Captain extends Agent {
 					int[] point = new int[2];
 					point[0] = Integer.parseInt(parts[0]);
 					point[1] = Integer.parseInt(parts[1]);
+					xTempCaptain = point[0];
+					yTempCaptain = point[1];
 					int distance = Integer.parseInt(parts[2]);
 					goal = new GridPoint(point);
 
@@ -199,6 +203,7 @@ public class Captain extends Agent {
 		public void action() {
 			ACLMessage newZoneMessage = new ACLMessage(ACLMessage.PROPOSE);
 			newZoneMessage.setConversationId("new_occupied_zone");
+			ready = false;
 
 			boolean found = false;
 			int i;
@@ -376,10 +381,10 @@ public class Captain extends Agent {
 	 * @return True if there are
 	 */
 	private boolean checkZoneHas(int toSearch) {
-		int xInit = (int) (xCaptain - communicationRadius);
-		int xLast = (int) (xCaptain + communicationRadius);
-		int yInit = (int) (yCaptain - communicationRadius);
-		int yLast = (int) (yCaptain + communicationRadius);
+		int xInit = (int) (xTempCaptain - communicationRadius);
+		int xLast = (int) (xTempCaptain + communicationRadius);
+		int yInit = (int) (yTempCaptain - communicationRadius);
+		int yLast = (int) (yTempCaptain + communicationRadius);
 
 		xInit = xInit < 0 ? 0 : xInit;
 		xLast = xLast > searchMatrix.length ? searchMatrix.length : xLast;
@@ -388,7 +393,7 @@ public class Captain extends Agent {
 
 		for (int j = yInit; j < yLast; j++) {
 			for (int i = xInit; i < xLast; i++) {
-				if (searchMatrix[j][i] == 1) {
+				if (searchMatrix[j][i] == toSearch) {
 					return true;
 				}
 			}
@@ -406,10 +411,10 @@ public class Captain extends Agent {
 		int xSoldier = -1;
 		int ySoldier = -1;
 		int counter = 0;
-		int xInit = (int) (xCaptain - communicationRadius);
-		int xLast = (int) (xCaptain + communicationRadius);
-		int yInit = (int) (yCaptain - communicationRadius);
-		int yLast = (int) (yCaptain + communicationRadius);
+		int xInit = (int) (xTempCaptain - communicationRadius);
+		int xLast = (int) (xTempCaptain + communicationRadius);
+		int yInit = (int) (yTempCaptain - communicationRadius);
+		int yLast = (int) (yTempCaptain + communicationRadius);
 
 		xInit = xInit < 0 ? 0 : xInit;
 		xLast = xLast > searchMatrix.length ? searchMatrix.length : xLast;

@@ -66,7 +66,7 @@ public class Soldier extends Agent {
 		space.moveTo(this, xSoldier, ySoldier);
 		grid.moveTo(this, (int) xSoldier, (int) ySoldier);
 
-		addBehaviour(new MoveBehaviour());
+		addBehaviour(new SoldierBehaviour());
 		addBehaviour(new SearchGoal());
 
 		System.out.println("Soldier " + getAID().getName() + " is ready.");
@@ -121,6 +121,7 @@ public class Soldier extends Agent {
 						myInfo = new int[(int) distanceToSearch];
 						Arrays.fill(myInfo, 2);
 						search = new GridPoint(point);
+						addBehaviour(new MoveBehaviour());
 						step = 2;
 					} else if (reply.getPerformative() == ACLMessage.REFUSE) {
 						step = 0;
@@ -141,26 +142,32 @@ public class Soldier extends Agent {
 	/**
 	 * Moves the Soldier to reach the desired search position.
 	 */
-	private class MoveBehaviour extends CyclicBehaviour {
+	private class MoveBehaviour extends Behaviour {
 		private static final long serialVersionUID = 1L;
 
 		@Override
 		public void action() {
 			try {
 				moveTowards(search);
+				if (inPosition) {
+					distanceToSearch--;
+					int[] point = new int[2];
+					point[0] = search.getX() + 1;
+					point[1] = search.getY();
+					search = new GridPoint(point);
+				}
 			} catch (NullPointerException e) {
 			}
-			if (inPosition && distanceToSearch > 1) {
-				distanceToSearch--;
-				int[] point = new int[2];
-				point[0] = search.getX() + 1;
-				point[1] = search.getY();
-				search = new GridPoint(point);
-			} else {
+		}
+
+		@Override
+		public boolean done() {
+			if (distanceToSearch == 0) {
 				inPosition = false;
 				addBehaviour(new SoldierBehaviour());
+				return true;
 			}
-
+			return false;
 		}
 	}
 
