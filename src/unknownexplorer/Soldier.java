@@ -30,6 +30,7 @@ public class Soldier extends Agent {
 	private double yTempSoldier;
 	private double velocitySoldier;
 	private boolean inPosition;
+	private boolean foundGoal;
 	private GridPoint search;
 	private GridPoint goal;
 	private double distanceToSearch;
@@ -109,18 +110,20 @@ public class Soldier extends Agent {
 			case 1:
 				ACLMessage reply = myAgent.receive(mt);
 				if (reply != null) {
-					if (reply.getPerformative() == ACLMessage.INFORM) {
+					if (reply.getPerformative() == ACLMessage.PROPAGATE) {
+						foundGoal = true;
 						String msg = reply.getContent();
 						String[] parts = msg.split("_");
-						int[] point = new int[2];
-						point[0] = (int) Double.parseDouble(parts[0]);
-						point[1] = (int) Double.parseDouble(parts[1]);
-						xTempSoldier = point[0];
-						yTempSoldier = point[1];
+						updatePosition(parts[0], parts[1]);
+						addBehaviour(new MoveBehaviour());
+						step = 2;
+					} else if (reply.getPerformative() == ACLMessage.INFORM) {
+						String msg = reply.getContent();
+						String[] parts = msg.split("_");
+						updatePosition(parts[0], parts[1]);
 						distanceToSearch = Double.parseDouble(parts[2]);
 						myInfo = new int[(int) distanceToSearch];
 						Arrays.fill(myInfo, 2);
-						search = new GridPoint(point);
 						addBehaviour(new MoveBehaviour());
 						step = 2;
 					} else if (reply.getPerformative() == ACLMessage.REFUSE) {
@@ -132,10 +135,7 @@ public class Soldier extends Agent {
 		}
 
 		public boolean done() {
-			if (step == 2) {
-				return true;
-			}
-			return false;
+			return step == 2;
 		}
 	}
 
@@ -162,7 +162,9 @@ public class Soldier extends Agent {
 
 		@Override
 		public boolean done() {
-			if (distanceToSearch == 0) {
+			if (inPosition && foundGoal) {
+				return true;
+			} else if (distanceToSearch == 0) {
 				inPosition = false;
 				addBehaviour(new SoldierBehaviour());
 				return true;
@@ -174,7 +176,7 @@ public class Soldier extends Agent {
 	/**
 	 * Searches for the goal on the area next to the Soldier.
 	 */
-	private class SearchGoal extends CyclicBehaviour {
+	private class SearchGoal extends Behaviour {
 		private static final long serialVersionUID = 1L;
 
 		@Override
@@ -191,6 +193,11 @@ public class Soldier extends Agent {
 					addBehaviour(new SendGoal());
 				}
 			}
+		}
+
+		@Override
+		public boolean done() {
+			return foundGoal;
 		}
 	}
 
@@ -212,9 +219,23 @@ public class Soldier extends Agent {
 
 		@Override
 		public boolean done() {
-			// TODO Receive confirmation of received information
-			return false;
+			return true;
 		}
+	}
+
+	/**
+	 * Updates the position of the Soldier.
+	 * 
+	 * @param x
+	 * @param y
+	 */
+	private void updatePosition(String x, String y) {
+		int[] point = new int[2];
+		point[0] = (int) Double.parseDouble(x);
+		point[1] = (int) Double.parseDouble(y);
+		search = new GridPoint(point);
+		xTempSoldier = point[0];
+		yTempSoldier = point[1];
 	}
 
 	/**

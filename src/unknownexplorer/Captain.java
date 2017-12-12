@@ -29,6 +29,7 @@ public class Captain extends Agent {
 
 	private AID general;
 	private boolean ready;
+	private boolean foundGoal;
 	private double xCaptain;
 	private double yCaptain;
 	private double xTempCaptain;
@@ -129,7 +130,10 @@ public class Captain extends Agent {
 					if (!message.getContent().isEmpty())
 						storeReport(message.getContent());
 
-					if (ready && checkNearFreePositions()) {
+					if (foundGoal) {
+						reply.setPerformative(ACLMessage.PROPAGATE);
+						reply.setContent(goal.getX() + "_" + goal.getY());
+					} else if (ready && checkNearFreePositions()) {
 						reply.setPerformative(ACLMessage.INFORM);
 						reply.setContent(getSearchInfo());
 					} else if (ready && !checkSoldierWorking()) {
@@ -282,7 +286,6 @@ public class Captain extends Agent {
 
 		@Override
 		public boolean done() {
-			// TODO Auto-generated method stub
 			return false;
 		}
 	}
@@ -299,14 +302,14 @@ public class Captain extends Agent {
 			MessageTemplate mt = MessageTemplate.MatchConversationId("broadcast_goal");
 			ACLMessage reply = myAgent.receive(mt);
 
-			try {
+			if (reply != null) {
+				foundGoal = true;
 				String msg = reply.getContent();
 				String[] parts = msg.split("_");
 				int[] point = new int[2];
 				point[0] = Integer.parseInt(parts[0]);
 				point[1] = Integer.parseInt(parts[1]);
 				goal = new GridPoint(point);
-			} catch (NullPointerException e) {
 			}
 		}
 	}
@@ -343,6 +346,7 @@ public class Captain extends Agent {
 			MessageTemplate mt = MessageTemplate.MatchConversationId("goal");
 			ACLMessage message = myAgent.receive(mt);
 			if (message != null) {
+				foundGoal = true;
 				String msg = message.getContent();
 
 				String[] parts = msg.split("_");
