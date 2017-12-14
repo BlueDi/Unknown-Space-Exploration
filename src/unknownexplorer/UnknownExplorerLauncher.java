@@ -96,7 +96,7 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 				allCaptains.add(c.getAID());
 
 				NdPoint pt = space.getLocation(c);
-				grid.moveTo(c, (int) pt.getX(), (int) pt.getY());
+				grid.moveTo(c, 0, 0);
 			}
 
 			for (int i = 0; i < N_CAPTAINS; i++) {
@@ -109,15 +109,11 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 				c.setOtherCaptains(otherCaptains);
 			}
 
-			int xinitCoord = 0;
-			int yinitCoord = 0;
 			int counter = 1;
 			for (int i = 0; i < N_SOLDIERS; i++) {
-				Soldier s = new Soldier(space, grid, caps[counter].getAID(), xinitCoord, yinitCoord, VISION_RADIUS);
+				Soldier s = new Soldier(space, grid, caps[counter].getAID(), VISION_RADIUS);
 				mainContainer.acceptNewAgent("Soldier" + i, s).start();
-
-				NdPoint pt = space.getLocation(s);
-				grid.moveTo(s, (int) pt.getX(), (int) pt.getY());
+				grid.moveTo(s, 0, 0);
 
 				counter++;
 				if (counter >= N_CAPTAINS) {
@@ -153,10 +149,16 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 
 		// WALLS
 		for (int i = 0; i < 100; i++) {
-			Wall w = new Wall();
+			Wall w = new Wall(BOARD_DIM);
 			context.add(w);
-			NdPoint pt = space.getLocation(w);
-			grid.moveTo(w, (int) pt.getX(), (int) pt.getY());
+			space.moveTo(w, w.getX(), w.getY());
+			grid.moveTo(w, (int) w.getX(), (int) w.getY());
+		}
+		for (int i = 0; i < 9; i++) {
+			Wall w = new Wall(9, i);
+			context.add(w);
+			grid.moveTo(w, 9, i);
+			space.moveTo(w, 9, i);
 		}
 
 		// OBJ POINT
@@ -164,7 +166,7 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 		context.add(o);
 		double x = o.getDeclaredField("xObjective");
 		double y = o.getDeclaredField("yObjective");
-		NdPoint pd = new NdPoint(x,y);
+		NdPoint pd = new NdPoint(x, y);
 		grid.moveTo(o, (int) pd.getX(), (int) pd.getY());
 		space.moveTo(o, (int) pd.getX(), (int) pd.getY());
 	}

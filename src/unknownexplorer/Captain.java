@@ -1,8 +1,8 @@
 package unknownexplorer;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.IntStream;
 
 import jade.core.AID;
 import jade.domain.FIPAException;
@@ -26,6 +26,8 @@ public class Captain extends Agent {
 	private Grid<Object> grid;
 
 	private List<jade.core.AID> otherCaptains;
+	private List<AID> whoNeedHelp;
+	private List<GridPoint> pointsThatNeedHelp;
 
 	private AID general;
 	private boolean ready;
@@ -75,6 +77,8 @@ public class Captain extends Agent {
 		this.grid = grid;
 		this.ready = false;
 		searchMatrix = new int[BOARD_DIM][BOARD_DIM];
+		whoNeedHelp = new ArrayList<AID>();
+		pointsThatNeedHelp = new ArrayList<GridPoint>();
 	}
 
 	/**
@@ -101,7 +105,7 @@ public class Captain extends Agent {
 		addBehaviour(new ListenBroadcastGoal());
 		addBehaviour(new ReceiveGoal());
 		addBehaviour(new MoveBehaviour());
-		System.err.println("Captain " + getAID().getName() + " is ready.");
+		System.out.println("Captain " + getAID().getName() + " is ready.");
 	}
 
 	/**
@@ -118,21 +122,26 @@ public class Captain extends Agent {
 		private static final long serialVersionUID = 1L;
 
 		public void action() {
-			MessageTemplate mt = MessageTemplate.or(MessageTemplate.MatchConversationId("position_to_search"),
-					MessageTemplate.MatchConversationId("new_occupied_zone"));
+			MessageTemplate mt = MessageTemplate.or(MessageTemplate.MatchConversationId("help"),
+					MessageTemplate.or(MessageTemplate.MatchConversationId("position_to_search"),
+							MessageTemplate.MatchConversationId("new_occupied_zone")));
 			ACLMessage message = myAgent.receive(mt);
 			if (message != null) {
 				ACLMessage reply = message.createReply();
 				if (message.getSender().getName().startsWith("Soldier")
 						&& message.getConversationId() == "position_to_search"
 						&& message.getPerformative() == ACLMessage.REQUEST) {
-					System.out.println(myAgent.getAID() + " " + message);
 					if (!message.getContent().isEmpty())
 						storeReport(message.getContent());
 
 					if (foundGoal) {
 						reply.setPerformative(ACLMessage.PROPAGATE);
 						reply.setContent(goal.getX() + "_" + goal.getY());
+					} else if (ready && !whoNeedHelp.isEmpty() && !pointsThatNeedHelp.isEmpty() && whoNeedHelp.get(0) != message.getSender()) {
+						reply.setPerformative(ACLMessage.PROXY);
+						GridPoint gp = pointsThatNeedHelp.remove(0);
+						reply.setContent(gp.getX() + "_" + gp.getY());
+						reply.addReplyTo(whoNeedHelp.remove(0));
 					} else if (ready && checkNearFreePositions()) {
 						reply.setPerformative(ACLMessage.INFORM);
 						reply.setContent(getSearchInfo());
@@ -144,6 +153,16 @@ public class Captain extends Agent {
 						reply.setPerformative(ACLMessage.REFUSE);
 						reply.setContent("");
 					}
+				} else if (message.getSender().getName().startsWith("Soldier") && message.getConversationId() == "help"
+						&& message.getPerformative() == ACLMessage.REQUEST) {
+					reply.setPerformative(ACLMessage.UNKNOWN);
+					String msg = message.getContent();
+					String[] parts = msg.split("_");
+					int[] point = new int[2];
+					point[0] = (int) Double.parseDouble(parts[0]);
+					point[1] = (int) Double.parseDouble(parts[1]);
+					pointsThatNeedHelp.add(new GridPoint(point));
+					whoNeedHelp.add(message.getSender());
 				} else if (general == null && message.getSender().getName().startsWith("Captain")
 						&& message.getConversationId() == "new_occupied_zone"
 						&& message.getPerformative() == ACLMessage.PROPOSE) {
@@ -173,8 +192,6 @@ public class Captain extends Agent {
 					yTempCaptain = point[1];
 					int distance = Integer.parseInt(parts[2]);
 					goal = new GridPoint(point);
-
-					System.out.println(point[0] + " - " + Arrays.toString(searchMatrix[point[1]]));
 					updateSearchMatrixCaptain(point[0], point[1], distance);
 					reply.setPerformative(ACLMessage.UNKNOWN);
 				} else if (message.getSender().getName().startsWith("Captain")
@@ -250,8 +267,6 @@ public class Captain extends Agent {
 			nPositions = (xCounter >= yCounter) ? yCounter : xCounter;
 			newZoneMessage
 					.setContent((xFirst0 + nPositions / 2) + "_" + (yFirst0 + nPositions / 2) + "_" + (nPositions / 2));
-			System.out.println(xFirst0 + "-" + yFirst0);
-			System.out.println(xCounter + "-" + yCounter + "-" + nPositions);
 
 			if (general != null) {
 				newZoneMessage.addReceiver(general);
@@ -294,7 +309,7 @@ public class Captain extends Agent {
 	 * The Captain is always listening to other captains information about the
 	 * goal.
 	 */
-	private class ListenBroadcastGoal extends CyclicBehaviour {
+	private class ListenBroadcastGoal extends Behaviour {
 		private static final long serialVersionUID = 1L;
 
 		@Override
@@ -312,6 +327,11 @@ public class Captain extends Agent {
 				goal = new GridPoint(point);
 			}
 		}
+
+		@Override
+		public boolean done() {
+			return foundGoal;
+		}
 	}
 
 	/**
@@ -325,12 +345,8 @@ public class Captain extends Agent {
 
 		@Override
 		public void action() {
-			label :try {
+			try {
 				moveTowards(goal);
-				if(goal.getX()==(int)Objective.getxObjective() && goal.getY()==(int)Objective.getyObjective()){
-					System.out.println("Objective has been found: xCoord - " + goal.getX() + " yCoord - " + goal.getY());	
-					break label;
-				}
 			} catch (NullPointerException e) {
 			}
 		}

@@ -1,6 +1,7 @@
 package unknownexplorer;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import jade.core.AID;
@@ -10,10 +11,10 @@ import repast.simphony.query.space.grid.GridCell;
 import repast.simphony.query.space.grid.GridCellNgh;
 import repast.simphony.space.continuous.ContinuousSpace;
 import repast.simphony.space.grid.Grid;
+import repast.simphony.space.grid.GridDimensions;
 import repast.simphony.space.grid.GridPoint;
 import sajas.core.Agent;
 import sajas.core.behaviours.Behaviour;
-import sajas.core.behaviours.CyclicBehaviour;
 
 /**
  * Soldier Agent, the one who searches.
@@ -23,6 +24,7 @@ public class Soldier extends Agent {
 	private Grid<Object> grid;
 
 	public AID myCaptain;
+	public AID whoAskedForHelp;
 
 	private double xSoldier;
 	private double ySoldier;
@@ -31,10 +33,13 @@ public class Soldier extends Agent {
 	private double velocitySoldier;
 	private boolean inPosition;
 	private boolean foundGoal;
+	private boolean foundWall;
+	private boolean waiting;
+	private boolean solved;
 	private GridPoint search;
 	private GridPoint goal;
+	private Wall wall;
 	private double distanceToSearch;
-	private int[] position = new int[2];
 	private int[] myInfo;
 	private double visionRadius;
 
@@ -47,12 +52,10 @@ public class Soldier extends Agent {
 	 * @param x
 	 * @param y
 	 */
-	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid, AID myCaptain, int x, int y, double visionRadius) {
+	public Soldier(ContinuousSpace<Object> space, Grid<Object> grid, AID myCaptain, double visionRadius) {
 		this.space = space;
 		this.grid = grid;
 		this.myCaptain = myCaptain;
-		position[0] = x;
-		position[1] = y;
 		this.visionRadius = visionRadius;
 	}
 
@@ -60,9 +63,11 @@ public class Soldier extends Agent {
 	 * Initialize the Soldier.
 	 */
 	protected void setup() {
-		xSoldier = position[0];
-		ySoldier = position[1];
+		xSoldier = 0;
+		ySoldier = 0;
 		velocitySoldier = 1;
+
+		foundGoal = false;
 
 		space.moveTo(this, xSoldier, ySoldier);
 		grid.moveTo(this, (int) xSoldier, (int) ySoldier);
@@ -117,6 +122,14 @@ public class Soldier extends Agent {
 						updatePosition(parts[0], parts[1]);
 						addBehaviour(new MoveBehaviour());
 						step = 2;
+					} else if (reply.getPerformative() == ACLMessage.PROXY) {
+						String msg = reply.getContent();
+						String[] parts = msg.split("_");
+						updatePosition(parts[0], parts[1]);
+						Iterator<?> it = reply.getAllReplyTo();
+						whoAskedForHelp = (AID) it.next();
+						addBehaviour(new Helping());
+						step = 2;
 					} else if (reply.getPerformative() == ACLMessage.INFORM) {
 						String msg = reply.getContent();
 						String[] parts = msg.split("_");
@@ -147,16 +160,18 @@ public class Soldier extends Agent {
 
 		@Override
 		public void action() {
-			try {
-				moveTowards(search);
-				if (inPosition) {
-					distanceToSearch--;
-					int[] point = new int[2];
-					point[0] = search.getX() + 1;
-					point[1] = search.getY();
-					search = new GridPoint(point);
+			if (!foundWall) {
+				try {
+					moveToExplore(search);
+					if (inPosition && !foundWall) {
+						distanceToSearch--;
+						int[] point = new int[2];
+						point[0] = search.getX() + 1;
+						point[1] = search.getY();
+						search = new GridPoint(point);
+					}
+				} catch (NullPointerException e) {
 				}
-			} catch (NullPointerException e) {
 			}
 		}
 
@@ -164,12 +179,58 @@ public class Soldier extends Agent {
 		public boolean done() {
 			if (inPosition && foundGoal) {
 				return true;
-			} else if (distanceToSearch == 0) {
+			} else if (inPosition && distanceToSearch == 0) {
 				inPosition = false;
 				addBehaviour(new SoldierBehaviour());
 				return true;
 			}
 			return false;
+		}
+	}
+
+	private class Helping extends Behaviour {
+		private static final long serialVersionUID = 1L;
+
+		@Override
+		public void action() {
+			moveTowards(search);
+		}
+
+		@Override
+		public boolean done() {
+			if (search.equals(grid.getLocation(myAgent))) {
+				destroyWall(search);
+				foundWall = false;
+				ACLMessage message = new ACLMessage(ACLMessage.AGREE);
+				message.setConversationId("solved");
+				message.addReceiver(whoAskedForHelp);
+				myAgent.send(message);
+				addBehaviour(new SoldierBehaviour());
+				return true;
+			}
+			return false;
+		}
+
+	}
+
+	private class HelpListener extends Behaviour {
+		private static final long serialVersionUID = 1L;
+		private MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchConversationId("solved"),
+				MessageTemplate.MatchPerformative(ACLMessage.AGREE));
+
+		@Override
+		public void action() {
+			ACLMessage message = myAgent.receive(mt);
+
+			if (message != null) {
+				solved = true;
+				System.out.println("Agent " + myAgent.getLocalName() + " got helped.");
+			}
+		}
+
+		@Override
+		public boolean done() {
+			return solved;
 		}
 	}
 
@@ -247,12 +308,13 @@ public class Soldier extends Agent {
 		GridCellNgh<Wall> nghCreator = new GridCellNgh<Wall>(grid, pt, Wall.class, (int) visionRadius, 0);
 		List<GridCell<Wall>> gridCells = nghCreator.getNeighborhood(true);
 
+		int wallPos = -1;
 		for (GridCell<Wall> cell : gridCells) {
-			if ((cell.getPoint().getX() < (int) xSoldier + distanceToSearch)
-					&& cell.getPoint().getX() >= (int) xSoldier) {
-				myInfo[cell.getPoint().getX() - (int) xSoldier] = 3;
+			if ((cell.getPoint().getX() < (int) xSoldier + distanceToSearch) && cell.getPoint().getX() >= (int) xSoldier
+					&& cell.getPoint().getY() == ySoldier) {
+				wallPos = cell.getPoint().getX() - (int) xSoldier;
+				myInfo[wallPos] = 3;
 			}
-
 		}
 	}
 
@@ -276,12 +338,80 @@ public class Soldier extends Agent {
 	}
 
 	/**
+	 * Checks if there is a Wall at pt. Updates wall value.
+	 * 
+	 * @param pt
+	 * @return true if there is
+	 */
+	private boolean isWall(GridPoint pt) {
+		Iterable<Object> objects = grid.getObjectsAt(pt.getX(), pt.getY());
+		for (Iterator<Object> iter = objects.iterator(); iter.hasNext();) {
+			Object element = iter.next();
+			if (element.getClass().equals(Wall.class)) {
+				wall = (Wall) element;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private void checkFastDestroy(GridPoint pt) {
+		GridCellNgh<Soldier> nghCreator = new GridCellNgh<Soldier>(grid, pt, Soldier.class, 1, 1);
+		List<GridCell<Soldier>> gridCells = nghCreator.getNeighborhood(true);
+
+		for (GridCell<Soldier> cell : gridCells) {
+			Iterator<Soldier> it = cell.items().iterator();
+			if (it.hasNext()) {
+				if (it.next().getAID() != this.getAID()) {
+					destroyWall(pt);
+					foundWall = false;
+					break;
+				}
+			}
+		}
+	}
+
+	private void destroyWall(GridPoint pt) {
+		GridCellNgh<Wall> nghCreator = new GridCellNgh<Wall>(grid, pt, Wall.class, 0, 0);
+		List<GridCell<Wall>> gridCells = nghCreator.getNeighborhood(true);
+
+		for (GridCell<Wall> cell : gridCells) {
+			Iterator<Wall> it = cell.items().iterator();
+			if (it.hasNext()) {
+				Wall w = it.next();
+				GridDimensions d = grid.getDimensions();
+				grid.moveTo(w, d.getWidth() - 1, d.getHeight() - 1);
+				space.moveTo(w, d.getWidth() - 1, d.getHeight() - 1);
+			}
+		}
+	}
+
+	private void askForHelp() {
+		ACLMessage message = new ACLMessage(ACLMessage.REQUEST);
+		message.setConversationId("help");
+		message.addReceiver(myCaptain);
+		message.setContent(wall.getX() + "_" + wall.getY());
+		this.send(message);
+		addBehaviour(new HelpListener());
+	}
+
+	private void moveToExplore(GridPoint pt) {
+		foundWall = isWall(pt);
+		if (foundWall) {
+			checkFastDestroy(pt);
+		}
+		moveTowards(pt);
+	}
+
+	/**
 	 * Updates the position of the Soldier to move it towards pt.
 	 * 
 	 * @param pt
 	 */
 	public void moveTowards(GridPoint pt) {
-		if (!pt.equals(grid.getLocation(this))) {
+		if (!foundWall && !waiting && !pt.equals(grid.getLocation(this))) {
+			waiting = false;
+
 			if (xSoldier > pt.getX()) {
 				xSoldier -= velocitySoldier;
 			} else if (xSoldier < pt.getX()) {
@@ -296,6 +426,15 @@ public class Soldier extends Agent {
 
 			space.moveTo(this, xSoldier, ySoldier);
 			grid.moveTo(this, (int) xSoldier, (int) ySoldier);
+		} else if (foundWall && !solved && !waiting) {
+			waiting = true;
+			inPosition = false;
+			askForHelp();
+		} else if (solved) {
+			solved = false;
+			foundWall = false;
+			waiting = false;
+			destroyWall(pt);
 		} else {
 			inPosition = true;
 			analyseArea(pt);
