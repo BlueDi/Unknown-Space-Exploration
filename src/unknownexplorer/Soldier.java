@@ -160,18 +160,13 @@ public class Soldier extends Agent {
 
 		@Override
 		public void action() {
-			if (!foundWall) {
-				try {
-					moveToExplore(search);
-					if (inPosition && !foundWall) {
-						distanceToSearch--;
-						int[] point = new int[2];
-						point[0] = search.getX() + 1;
-						point[1] = search.getY();
-						search = new GridPoint(point);
-					}
-				} catch (NullPointerException e) {
-				}
+			moveToExplore(search);
+			if (inPosition && !foundWall) {
+				distanceToSearch--;
+				int[] point = new int[2];
+				point[0] = search.getX() + 1;
+				point[1] = search.getY();
+				search = new GridPoint(point);
 			}
 		}
 
@@ -179,7 +174,7 @@ public class Soldier extends Agent {
 		public boolean done() {
 			if (inPosition && foundGoal) {
 				return true;
-			} else if (inPosition && distanceToSearch == 0) {
+			} else if (inPosition && distanceToSearch <= 0) {
 				inPosition = false;
 				addBehaviour(new SoldierBehaviour());
 				return true;
@@ -224,13 +219,18 @@ public class Soldier extends Agent {
 
 			if (message != null) {
 				solved = true;
-				System.out.println("Agent " + myAgent.getLocalName() + " got helped.");
 			}
 		}
 
 		@Override
 		public boolean done() {
-			return solved;
+			if (solved) {
+				foundWall = true;
+				solved = true;
+				waiting = false;
+				return true;
+			}
+			return false;
 		}
 	}
 
@@ -310,8 +310,8 @@ public class Soldier extends Agent {
 
 		int wallPos = -1;
 		for (GridCell<Wall> cell : gridCells) {
-			if ((cell.getPoint().getX() < (int) xSoldier + distanceToSearch) && cell.getPoint().getX() >= (int) xSoldier
-					&& cell.getPoint().getY() == ySoldier) {
+			if (cell.size() > 0 && cell.getPoint().getX() < ((int) xSoldier + distanceToSearch)
+					&& cell.getPoint().getX() >= (int) xSoldier && cell.getPoint().getY() == ySoldier) {
 				wallPos = cell.getPoint().getX() - (int) xSoldier;
 				myInfo[wallPos] = 3;
 			}
@@ -395,6 +395,11 @@ public class Soldier extends Agent {
 		addBehaviour(new HelpListener());
 	}
 
+	/**
+	 * Tries to move the Soldier to pt. Collides with Walls.
+	 * 
+	 * @param pt
+	 */
 	private void moveToExplore(GridPoint pt) {
 		foundWall = isWall(pt);
 		if (foundWall) {
@@ -404,12 +409,12 @@ public class Soldier extends Agent {
 	}
 
 	/**
-	 * Updates the position of the Soldier to move it towards pt.
+	 * Updates the position of the Soldier to move it towards pt. No collision.
 	 * 
 	 * @param pt
 	 */
 	public void moveTowards(GridPoint pt) {
-		if (!foundWall && !waiting && !pt.equals(grid.getLocation(this))) {
+		if (!solved && !foundWall && !waiting && !pt.equals(grid.getLocation(this))) {
 			waiting = false;
 
 			if (xSoldier > pt.getX()) {
@@ -426,16 +431,20 @@ public class Soldier extends Agent {
 
 			space.moveTo(this, xSoldier, ySoldier);
 			grid.moveTo(this, (int) xSoldier, (int) ySoldier);
+			grid.moveTo(this, (int) xSoldier, (int) ySoldier);
 		} else if (foundWall && !solved && !waiting) {
 			waiting = true;
 			inPosition = false;
 			askForHelp();
-		} else if (solved) {
+		} else if (foundWall && solved && waiting) {
 			solved = false;
 			foundWall = false;
 			waiting = false;
 			destroyWall(pt);
 		} else {
+			solved = false;
+			foundWall = false;
+			waiting = false;
 			inPosition = true;
 			analyseArea(pt);
 		}

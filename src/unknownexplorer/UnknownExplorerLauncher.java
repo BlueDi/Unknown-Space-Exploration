@@ -148,17 +148,17 @@ public class UnknownExplorerLauncher extends RepastSLauncher {
 				new SimpleGridAdder<Object>(), true, xdim, ydim));
 
 		// WALLS
-		for (int i = 0; i < 100; i++) {
-			Wall w = new Wall(BOARD_DIM);
-			context.add(w);
-			space.moveTo(w, w.getX(), w.getY());
-			grid.moveTo(w, (int) w.getX(), (int) w.getY());
-		}
 		for (int i = 0; i < 9; i++) {
 			Wall w = new Wall(9, i);
 			context.add(w);
 			grid.moveTo(w, 9, i);
 			space.moveTo(w, 9, i);
+		}
+		for (int i = 0; i < 3; i++) {
+			Wall w = new Wall(39, i);
+			context.add(w);
+			grid.moveTo(w, 39, i);
+			space.moveTo(w, 39, i);
 		}
 
 		// OBJ POINT
