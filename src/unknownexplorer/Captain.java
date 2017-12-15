@@ -72,11 +72,12 @@ public class Captain extends Agent {
 	 * @param grid
 	 * @param BOARD_DIM
 	 */
-	public Captain(ContinuousSpace<Object> space, Grid<Object> grid, int BOARD_DIM) {
+	public Captain(ContinuousSpace<Object> space, Grid<Object> grid, int BOARD_DIM, int COMMUNICATION_RADIUS) {
 		this.space = space;
 		this.grid = grid;
 		this.ready = false;
 		searchMatrix = new int[BOARD_DIM][BOARD_DIM];
+		this.communicationRadius = COMMUNICATION_RADIUS;
 		whoNeedHelp = new ArrayList<AID>();
 		pointsThatNeedHelp = new ArrayList<GridPoint>();
 	}
@@ -85,8 +86,6 @@ public class Captain extends Agent {
 	 * Initialize the Captain.
 	 */
 	protected void setup() {
-		communicationRadius = 5;
-
 		DFAgentDescription dfd = new DFAgentDescription();
 		dfd.setName(getAID());
 		ServiceDescription sd = new ServiceDescription();
@@ -137,7 +136,8 @@ public class Captain extends Agent {
 					if (foundGoal) {
 						reply.setPerformative(ACLMessage.PROPAGATE);
 						reply.setContent(goal.getX() + "_" + goal.getY());
-					} else if (ready && !whoNeedHelp.isEmpty() && !pointsThatNeedHelp.isEmpty() && whoNeedHelp.get(0) != message.getSender()) {
+					} else if (ready && !whoNeedHelp.isEmpty() && !pointsThatNeedHelp.isEmpty()
+							&& whoNeedHelp.get(0) != message.getSender()) {
 						reply.setPerformative(ACLMessage.PROXY);
 						GridPoint gp = pointsThatNeedHelp.remove(0);
 						reply.setContent(gp.getX() + "_" + gp.getY());
@@ -172,7 +172,9 @@ public class Captain extends Agent {
 					point[0] = Integer.parseInt(parts[0]);
 					point[1] = Integer.parseInt(parts[1]);
 					point[2] = Integer.parseInt(parts[2]);
-					if (searchMatrix[point[1]][point[0]] == 0) {
+					if (point[0] >= searchMatrix.length || point[1] >= searchMatrix.length) {
+						reply.setPerformative(ACLMessage.CANCEL);
+					} else if (searchMatrix[point[1]][point[0]] == 0) {
 						reply.setPerformative(ACLMessage.CONFIRM);
 						updateSearchMatrixCaptain(point[0], point[1], point[2]);
 					} else {
@@ -265,6 +267,9 @@ public class Captain extends Agent {
 			}
 
 			nPositions = (xCounter >= yCounter) ? yCounter : xCounter;
+			if (nPositions == 1) {
+				nPositions = 2;
+			}
 			newZoneMessage
 					.setContent((xFirst0 + nPositions / 2) + "_" + (yFirst0 + nPositions / 2) + "_" + (nPositions / 2));
 

@@ -200,6 +200,7 @@ public class Soldier extends Agent {
 				message.setConversationId("solved");
 				message.addReceiver(whoAskedForHelp);
 				myAgent.send(message);
+				myInfo = null;
 				addBehaviour(new SoldierBehaviour());
 				return true;
 			}
